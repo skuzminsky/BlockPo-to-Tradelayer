@@ -540,16 +540,21 @@ class CMPTradeList : public CDBBase
   void getChannelTradesForPair(const std::string& channel, uint32_t propertyIdA, uint32_t propertyIdB, UniValue& responseArray, uint64_t count);
 };
 
-class CMPSettlementMatchList : public CDBBase
+class CMPSettlementList : public CDBBase
 {
  public:
-  CMPSettlementMatchList(const fs::path& path, bool fWipe)
+  CMPSettlementList(const fs::path& path, bool fWipe)
     {
       leveldb::Status status = Open(path, fWipe);
-      if (msc_debug_persistence) PrintToLog("Loading settlement match info database: %s\n", status.ToString());
+      if (msc_debug_persistence) PrintToLog("Loading settlement database info: %s\n", status.ToString());
+    }
+  virtual ~CMPSettlementList()
+    {
+      if (msc_debug_persistence) PrintToLog("CMPSettlementList closed\n");
     }
 
-  virtual ~CMPSettlementMatchList() { }
+  void recordSettlementList(const uint256 txid1, const uint256 txid2, string address1, string address2, uint64_t effective_price, uint64_t amount_maker, uint64_t amount_taker, int blockNum1, int blockNum2, uint32_t property_traded, string tradeStatus, int64_t lives_s0, int64_t lives_s1, int64_t lives_s2, int64_t lives_s3, int64_t lives_b0, int64_t lives_b1, int64_t lives_b2, int64_t lives_b3, string s_maker0, string s_taker0, string s_maker1, string s_taker1, string s_maker2, string s_taker2, string s_maker3, string s_taker3, int64_t nCouldBuy0, int64_t nCouldBuy1, int64_t nCouldBuy2, int64_t nCouldBuy3,uint64_t amountpnew, uint64_t amountpold);
+  bool SettlementAlgorithm(int starting_block, int ending_block, bool bDeleteFound, uint32_t property_traded);
 };
 
 //! Available balances of wallet properties
@@ -597,6 +602,7 @@ void CheckWalletUpdate(bool forceUpdate = false);
 void NotifyTotalTokensChanged(uint32_t propertyId);
 void buildingEdge(std::map<std::string, std::string> &edgeEle, std::string addrs_src, std::string addrs_trk, std::string status_src, std::string status_trk, int64_t lives_src, int64_t lives_trk, int64_t amount_path, int64_t matched_price, int idx_q, int ghost_edge);
 void printing_edges_database(std::map<std::string, std::string> &path_ele);
+const string SettlementDBLine(std::string address1, std::string s_status1, int64_t lives_maker, std::string address2, std::string s_status2, int64_t lives_taker, int64_t nCouldBuy, uint64_t effective_price, uint32_t property_traded);
 const string gettingLineOut(std::string address1, std::string s_status1, int64_t lives_maker, std::string address2, std::string s_status2, int64_t lives_taker, int64_t nCouldBuy, uint64_t effective_price);
 void loopForUPNL(std::vector<std::map<std::string, std::string>> path_ele, std::vector<std::map<std::string, std::string>> path_eleh, unsigned int path_length, std::string address1, std::string address2, std::string status1, std::string status2, double &UPNL1, double &UPNL2, uint64_t exit_price, int64_t nCouldBuy0);
 void loopforEntryPrice(std::vector<std::map<std::string, std::string>> path_ele, std::vector<std::map<std::string, std::string>> path_eleh, std::string addrs_upnl, std::string status_match, double &entry_price, int &idx_price, uint64_t entry_price_num, unsigned int limSup, double exit_priceh, uint64_t &amount, std::string &status);
@@ -628,6 +634,7 @@ namespace mastercore
   extern CMPTxList *p_txlistdb;
   extern CtlTransactionDB *p_TradeTXDB;
   extern CMPTradeList *t_tradelistdb;
+  extern CMPSettlementList *pt_settlementlistdb;
 
   // TODO: move, rename
   extern CCoinsView viewDummy;
@@ -639,6 +646,8 @@ namespace mastercore
   std::string strMPProperty(uint32_t propertyId);
 
   bool isMPinBlockRange(int starting_block, int ending_block, bool bDeleteFound);
+
+  bool SettlementAlgorithm(int starting_block, int ending_block, bool bDeleteFound);
 
   std::string FormatContractMP(int64_t n);
 

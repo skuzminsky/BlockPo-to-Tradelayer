@@ -51,14 +51,16 @@ VectorTLS *pt_changepos_status = new VectorTLS(2, "OpenLongPosByShortPosNetted",
 //   }
 /**********************************************************/
 /** Functions for Settlement Algorithm */
+
 struct status_amounts *get_status_amounts_open_incr(VectorTLS &v, int q)
 {
   struct status_amounts *pt_status = new status_amounts;
   VectorTLS status_z(2);
   VectorTLS status_q = status_open_incr(status_z, q);
 
-  if ( finding(v[1], status_q) )
+  if (finding(v[1], status_q))
     {
+      //what all these vectors do is they sort which trades opened new positions and which netted positions, those then determine which threads converge with other threads
       pt_status->addrs_trk  = v[0];
       pt_status->status_trk = v[1];
       pt_status->lives_trk  = stol(v[2].c_str());
@@ -78,6 +80,36 @@ struct status_amounts *get_status_amounts_open_incr(VectorTLS &v, int q)
       pt_status->lives_trk  = stol(v[5].c_str());
       pt_status->nlives_src = stol(v[8].c_str());
       pt_status->nlives_trk = stol(v[9].c_str());
+    }
+  pt_status->amount_trd    = stol(v[6].c_str());
+  pt_status->matched_price = stod(v[7].c_str());
+  return pt_status;
+}
+
+//these functions will go through the differently named vectors and total the net payments in them
+struct status_amounts *db_status_open_incr(VectorTLS &v, int q)
+{
+  struct status_amounts *pt_status = new status_amounts;
+  VectorTLS status_z(2);
+  VectorTLS status_q = status_open_incr(status_z, q);
+
+  if (finding(v[1], status_q))
+    {
+      pt_status->addrs_trk  = v[0];
+      pt_status->status_trk = v[1];
+      pt_status->lives_trk  = stol(v[2].c_str());
+      pt_status->addrs_src  = v[3];
+      pt_status->status_src = v[4];
+      pt_status->lives_src  = stol(v[5].c_str());
+    }
+  else
+    {
+      pt_status->addrs_src  = v[0];
+      pt_status->status_src = v[1];
+      pt_status->lives_src  = stol(v[2].c_str());
+      pt_status->addrs_trk  = v[3];
+      pt_status->status_trk = v[4];
+      pt_status->lives_trk  = stol(v[5].c_str());
     }
   pt_status->amount_trd    = stol(v[6].c_str());
   pt_status->matched_price = stod(v[7].c_str());
@@ -120,6 +152,7 @@ struct status_amounts_edge *get_status_byedge(std::map<std::string, std::string>
 {
   struct status_amounts_edge *pt_status = new status_amounts_edge;
 
+  //this reads individual trades that end these threads and the "ghost edge" is a proposed sub-graph that would connect it to another thread to make it net out
   pt_status->addrs_src   = edge["addrs_src"];
   pt_status->addrs_trk   = edge["addrs_trk"];
   pt_status->status_src  = edge["status_src"];
@@ -205,6 +238,7 @@ VectorTLS status_netted_npartly(VectorTLS &status_q, int q)
     return status_q;
 }
 
+//This functions is NOT used right now
 void adding_newtwocols_trdamount(MatrixTLS &M_file, MatrixTLS &database)
 {
     int N =  size(database, 1);
@@ -216,11 +250,13 @@ void adding_newtwocols_trdamount(MatrixTLS &M_file, MatrixTLS &database)
     }
 }
 
+//this is where we begin the execution waterfall
 void settlement_algorithm_fifo(MatrixTLS &M_file, int64_t interest, int64_t twap_price)
 {
   VectorTLS &open_incr_long  = *pt_open_incr_long;
   VectorTLS &open_incr_short = *pt_open_incr_short;
 
+	//we have a number of datastructures to write to
   std::vector<std::vector<std::map<std::string, std::string>>> path_main;
   std::vector<std::vector<std::map<std::string, std::string>>>::iterator it_path_main;
   std::vector<std::map<std::string, std::string>>::iterator it_path_maini;
@@ -230,101 +266,104 @@ void settlement_algorithm_fifo(MatrixTLS &M_file, int64_t interest, int64_t twap
   VectorTLS vdata(n_cols);
 
   for (int i = 0; i < n_rows; ++i)
-  {
-    for (int j = 0; j < n_cols; ++j) vdata[j] = M_file[i][j];
+    {
+      for (int j = 0; j < n_cols; ++j) vdata[j] = M_file[i][j];
 
-    struct status_amounts *pt_vdata_long  = get_status_amounts_open_incr(vdata, 0);
-    struct status_amounts *pt_vdata_short = get_status_amounts_open_incr(vdata, 1);
+      //count up the longs and shorts that create new threads by opening chains of open interest being traded around
+      struct status_amounts *pt_vdata_long  = get_status_amounts_open_incr(vdata, 0);
+      struct status_amounts *pt_vdata_short = get_status_amounts_open_incr(vdata, 1);
 
- 		std::vector<std::map<std::string, std::string>> path_maini; /** ith Path element for Main Graph **/
- 		int idx_b = 0; /** Branch Index: idx_b = 1 (Branch) idx_b = 0 (Source Edge) **/
-    if (finding(pt_vdata_long->status_trk, open_incr_long) || finding(pt_vdata_short->status_trk, open_incr_short))
+      std::vector<std::map<std::string, std::string>> path_maini; /** ith Path element for Main Graph **/
+      int idx_b = 0; /** Branch Index: idx_b = 1 (Branch) idx_b = 0 (Source Edge) **/
+      if (finding(pt_vdata_long->status_trk, open_incr_long) || finding(pt_vdata_short->status_trk, open_incr_short))
+	{
+	  path_number += 1;
+
+	  if(msc_debug_settlement_algorithm_fifo) PrintToLog("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+	  /** First Edge for this new Path/Branch **/
+	  building_edge(edge_source,
+			pt_vdata_long->addrs_src, pt_vdata_long->addrs_trk,
+			pt_vdata_long->status_src, pt_vdata_long->status_trk,
+			pt_vdata_long->matched_price, pt_vdata_long->matched_price,
+			pt_vdata_long->lives_src, pt_vdata_long->lives_trk,
+			i, path_number, pt_vdata_long->amount_trd, 0);
+
+    //we figure out where the thread ends with an long or short position that is still open at settlement
+	  if (finding(pt_vdata_long->status_trk, open_incr_long) && finding(pt_vdata_short->status_trk, open_incr_short))
+	    {
+	      if(msc_debug_settlement_algorithm_fifo) PrintToLog("New Edge Source: Row #%d\n\n", i);
+	    }
+	  else
+	    {
+	      idx_b = 1;
+	      if(msc_debug_settlement_algorithm_fifo) PrintToLog("Posible Branch Source: Row #%d\n\n", i);
+	    }
+
+    //this determines if a trade is extending a thread or splitting off from a thread
+	  path_maini.push_back(edge_source);
+	  if(msc_debug_settlement_algorithm_fifo) PrintingEdge(edge_source);
+
+	  if (finding(pt_vdata_long->status_trk, open_incr_long))
+	    {
+	      int counting_netted_long = 0;
+	      long int amount_trd_sum_long = 0;
+	      if(msc_debug_settlement_algorithm_fifo)
 		{
-      path_number += 1;
-
-      if(msc_debug_settlement_algorithm_fifo) PrintToLog("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-	  	/** First Edge for this new Path/Branch **/
-
-	  	building_edge(edge_source,
-                    pt_vdata_long->addrs_src, pt_vdata_long->addrs_trk,
-                    pt_vdata_long->status_src, pt_vdata_long->status_trk,
-                    pt_vdata_long->matched_price, pt_vdata_long->matched_price,
-                    pt_vdata_long->lives_src, pt_vdata_long->lives_trk,
-                    i, path_number, pt_vdata_long->amount_trd, 0);
-
-	  	if (finding(pt_vdata_long->status_trk, open_incr_long) && finding(pt_vdata_short->status_trk, open_incr_short)){
-          if(msc_debug_settlement_algorithm_fifo) PrintToLog("New Edge Source: Row #%d\n\n", i);
-	  	} else {
-        idx_b = 1;
-	  		if(msc_debug_settlement_algorithm_fifo) PrintToLog("Posible Branch Source: Row #%d\n\n", i);
-	  	}
-
-	  	path_maini.push_back(edge_source);
-	  	if(msc_debug_settlement_algorithm_fifo) PrintingEdge(edge_source);
-
-	  	if (finding(pt_vdata_long->status_trk, open_incr_long))
-	  	{
-        int counting_netted_long = 0;
-	    	long int amount_trd_sum_long = 0;
-
-
-        if(msc_debug_settlement_algorithm_fifo) {
-	    	    PrintToLog("\n*************************************************");
-	    	    PrintToLog("\nTracking Long Position for: %s", pt_vdata_long->addrs_trk);
-        }
-
-	    	clearing_operator_fifo(vdata, M_file, i, pt_vdata_long, 0, counting_netted_long, amount_trd_sum_long, path_maini,
-					     			           path_number, pt_vdata_long->nlives_trk, idx_b);
-	  	}
-
-	  	if(finding(pt_vdata_short->status_trk, open_incr_short))
-	  	{
-        int counting_netted_short = 0;
-	    	long int amount_trd_sum_short = 0;
-        if(msc_debug_settlement_algorithm_fifo) {
-	    	    PrintToLog("\n*************************************************");
-	    	    PrintToLog("\nTracking Short Position for: %s", pt_vdata_short->addrs_trk);
-        }
-
-	    	clearing_operator_fifo(vdata, M_file, i, pt_vdata_short, 1, counting_netted_short, amount_trd_sum_short, path_maini,
-	    							           path_number, pt_vdata_short->nlives_trk, idx_b);
-	  	}
-
-      if (path_maini.size() != 0)
-	  	{
-        if(msc_debug_settlement_algorithm_fifo) PrintToLog("\nPath Element #%d of the Main Graph:\n\n", path_number);
-  			for (it_path_maini = path_maini.begin(); it_path_maini != path_maini.end(); ++it_path_maini)
-          if(msc_debug_settlement_algorithm_fifo) PrintingEdge(*it_path_maini);
-      }
-
-      path_main.push_back(path_maini);
+		  PrintToLog("\n*************************************************");
+		  PrintToLog("\nTracking Long Position for: %s", pt_vdata_long->addrs_trk);
 		}
-  }
+        //now we're going to look into "clearing" or collapsing these threads into a series of payments
+	      clearing_operator_fifo(vdata, M_file, i, pt_vdata_long, 0, counting_netted_long, amount_trd_sum_long, path_maini,
+				     path_number, pt_vdata_long->nlives_trk, idx_b);
+	    }
+
+    //for the longs
+	  if(finding(pt_vdata_short->status_trk, open_incr_short))
+	    {
+	      int counting_netted_short = 0;
+	      long int amount_trd_sum_short = 0;
+	      if(msc_debug_settlement_algorithm_fifo)
+		{
+		  PrintToLog("\n*************************************************");
+		  PrintToLog("\nTracking Short Position for: %s", pt_vdata_short->addrs_trk);
+		}
+	      clearing_operator_fifo(vdata, M_file, i, pt_vdata_short, 1, counting_netted_short, amount_trd_sum_short, path_maini,
+				     path_number, pt_vdata_short->nlives_trk, idx_b);
+	    }
+	  if (path_maini.size() != 0)
+	    {
+	      if(msc_debug_settlement_algorithm_fifo) PrintToLog("\nPath Element #%d of the Main Graph:\n\n", path_number);
+	      for (it_path_maini = path_maini.begin(); it_path_maini != path_maini.end(); ++it_path_maini)
+		if(msc_debug_settlement_algorithm_fifo) PrintingEdge(*it_path_maini);
+	    }
+	  path_main.push_back(path_maini);
+	}
+    }
 
   if(msc_debug_settlement_algorithm_fifo) PrintToLog("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+
   if (path_main.size() != 0)
-  {
-    if(msc_debug_settlement_algorithm_fifo) PrintToLog("\n\nMain Graph for Settlement:\n\n");
-  	for (it_path_main = path_main.begin(); it_path_main != path_main.end(); ++it_path_main)
-      PrintingGraph(*it_path_main);
-  }
+    {
+      if(msc_debug_settlement_algorithm_fifo) PrintToLog("\n\nMain Graph for Settlement:\n\n");
+      for (it_path_main = path_main.begin(); it_path_main != path_main.end(); ++it_path_main)
+	PrintingGraph(*it_path_main);
+    }
+  PrintToLog("\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+  PrintToLog("Second Part: Lives Vectors and Ghost Nodes\n\n");
 
-  if(msc_debug_settlement_algorithm_fifo) {
-      PrintToLog("\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-      PrintToLog("Second Part: Lives Vectors and Ghost Nodes\n\n");
-
-      PrintToLog("\n*************************************************");
-      PrintToLog("\nAddresses with Lives Non Zero\n\n");
-  }
-
+  //so now we're going to come up with the sets of counterparties who are directly facing each other after settlement
+	//and connect "Ghost Nodes" or connector sub-graphs of any sub-graphs that don't have enough money to be 100% whole
+	//such as when leveraged traders lose their money and their positions can't be liquidated at a break-even price,
+	//so the contract as a whole has a short-fall of margin to settle everyone 100%, and thus these connector graphs help smooth that out before
+	//we inject the insurance fund money or do a clawback on profits.
   std::vector<std::string> AddrsV = AddressesList(path_main);
   std::vector<std::string> AddrsLivesNonZero = LivesNonZero(path_main, AddrsV);
   for (std::vector<std::string>::iterator it = AddrsLivesNonZero.begin(); it != AddrsLivesNonZero.end(); ++it)
     if(msc_debug_settlement_algorithm_fifo) PrintToLog("%s\n", *it);
 
   if(msc_debug_settlement_algorithm_fifo) {
-      PrintToLog("\n*************************************************");
-      PrintToLog("\nComputing Lives contracts in the Main Graph\n");
+    PrintToLog("\n*************************************************");
+    PrintToLog("\nComputing Lives contracts in the Main Graph\n");
   }
 
   std::vector<std::map<std::string, std::string>> LivesLongs;
@@ -335,6 +374,7 @@ void settlement_algorithm_fifo(MatrixTLS &M_file, int64_t interest, int64_t twap
   std::vector<std::vector<std::map<std::string, std::string>>>::reverse_iterator rit_path_main;
   std::vector<std::map<std::string, std::string>>::reverse_iterator rit_path_maini;
 
+  //These data structures are used to sort post-settlement sets of counterparties
   for (std::vector<std::string>::iterator it_addrs = AddrsV.begin(); it_addrs != AddrsV.end(); ++it_addrs)
     {
       std::string &AddrsLives = *it_addrs;
@@ -348,15 +388,17 @@ void settlement_algorithm_fifo(MatrixTLS &M_file, int64_t interest, int64_t twap
       int NEvents         = 0;
       bool Loop = true;
 
-      for (rit_path_main = path_main.rbegin(); rit_path_main != path_main.rend() && Loop; ++rit_path_main)
-	{
+    //we're going to loop through a vector of addresses and note their data
+    for (rit_path_main = path_main.rbegin(); rit_path_main != path_main.rend() && Loop; ++rit_path_main)
+	  {
 	  for (rit_path_maini = (*rit_path_main).rbegin(); rit_path_maini != (*rit_path_main).rend() && Loop; ++rit_path_maini)
 	    {
 	      std::map<std::string, std::string> &GraphEdge = *rit_path_maini;
 	      struct EdgeInfo *PtStatusByEdge = GetEdgeInfo(GraphEdge);
 
-	      if (PtStatusByEdge->addrs_src == AddrsLives)
-		{
+	   if (PtStatusByEdge->addrs_src == AddrsLives)
+		 {
+
 		  NEvents += 1;
 		  IdPosition = finding_string("Long", PtStatusByEdge->status_src) ? 0 : 1;
 		  Status = PtStatusByEdge->status_src;
@@ -420,8 +462,8 @@ void settlement_algorithm_fifo(MatrixTLS &M_file, int64_t interest, int64_t twap
 	      else
 		continue;
 	    }
-	  }
-  }
+	}
+    }
 
   if(msc_debug_settlement_algorithm_fifo) PrintToLog("\n*************************************************\n");
   double exit_price_desired = 0;
@@ -432,22 +474,27 @@ void settlement_algorithm_fifo(MatrixTLS &M_file, int64_t interest, int64_t twap
   double sum_gamma_p 	    = 0;
   double sum_gamma_q 	    = 0;
 
+  //now we get to the end part in the flow chart in the patent, where we systematically analyze the solvency of
+	//this contract with the below loop and compare that to the TWAP or VWAP price given by an Oracle or on-chain volume
+	//The difference is what needs to be paid out of insurance fund or with a settlement tax
   for (it_path_main = path_main.begin(); it_path_main != path_main.end(); ++it_path_main)
-  {
-    computing_settlement_exitprice(*it_path_main, sum_oflives, PNL_total, gamma_p, gamma_q, interest, twap_price);
-    sum_gamma_p += gamma_p;
-    sum_gamma_q += gamma_q;
-  }
+    {
+      computing_settlement_exitprice(*it_path_main, sum_oflives, PNL_total, gamma_p, gamma_q, interest, twap_price);
+      sum_gamma_p += gamma_p;
+      sum_gamma_q += gamma_q;
+    }
 
   exit_price_desired = sum_gamma_p/sum_gamma_q;
   if(msc_debug_settlement_algorithm_fifo) PrintToLog("\nexit_price_desired = %d\n", exit_price_desired);
   counting_lives_longshorts(LivesLongs, LivesShorts);
 
-  if(msc_debug_settlement_algorithm_fifo) {
+  if(msc_debug_settlement_algorithm_fifo)
+    {
       PrintToLog("\n*************************************************");
       PrintToLog("\nGhost Edges Vector:\n\n");
-  }
+    }
 
+  //Now we're looking at sub-connector graphs to patch up the liquidity where there is damage
   std::vector<std::map<std::string, std::string>> GhostEdgesArray;
   GhostEdgesComputing(LivesLongs, LivesShorts, exit_price_desired, GhostEdgesArray);
 
@@ -462,40 +509,45 @@ void settlement_algorithm_fifo(MatrixTLS &M_file, int64_t interest, int64_t twap
   long int nonzero_lives = 0;
   double PNL_totalit = 0;
 
+   //now let's figure again the damage as it applies to the main default flow of margin vs. our routing
   /** Total PNL for Main Path **/
   for (it_path_main = path_main.begin(); it_path_main != path_main.end(); ++it_path_main)
-  {
-    k += 1;
-    if(msc_debug_settlement_algorithm_fifo) {
-        PrintToLog("\nPath #%d: PNL computation for the main path\n", k);
-        printing_path_maini(*it_path_main);
+    {
+      k += 1;
+      if(msc_debug_settlement_algorithm_fifo)
+	{
+	  PrintToLog("\nPath #%d: PNL computation for the main path\n", k);
+	  printing_path_maini(*it_path_main);
+	}
+
+      nonzero_lives = checkpath_livesnonzero(*it_path_main);
+      listof_addresses_bypath(*it_path_main, addrsv);
+
+      if(msc_debug_settlement_algorithm_fifo) PrintToLog("\nComputing PNL in this Path\n");
+      calculate_pnltrk_bypath(*it_path_main, PNL_totalit, addrs_set, addrsv, interest, twap_price);
+      PNL_total += PNL_totalit;
+      if(msc_debug_settlement_algorithm_fifo) PrintToLog("\nPNL_total_main sum: %f\n", PNL_total);
+      addrs_set.clear();
     }
 
-    nonzero_lives = checkpath_livesnonzero(*it_path_main);
-    listof_addresses_bypath(*it_path_main, addrsv);
-
-    if(msc_debug_settlement_algorithm_fifo) PrintToLog("\nComputing PNL in this Path\n");
-    calculate_pnltrk_bypath(*it_path_main, PNL_totalit, addrs_set, addrsv, interest, twap_price);
-    PNL_total += PNL_totalit;
-    if(msc_debug_settlement_algorithm_fifo) PrintToLog("\nPNL_total_main sum: %f\n", PNL_total);
-    addrs_set.clear();
-  }
-
+   //now let's audit how much we're routing around
   /** Total PNL for Ghost Nodes **/
-  if(msc_debug_settlement_algorithm_fifo) {
+  if(msc_debug_settlement_algorithm_fifo)
+    {
       PrintToLog("\n*************************************************");
       PrintToLog("\nChecking PNL for Ghost Nodes:\n");
-  }
+    }
 
+  // profit and loss for ghost nodes
   calculate_pnl_forghost(GhostEdgesArray, PNL_total);
 
-  if(msc_debug_settlement_algorithm_fifo) {
+  if(msc_debug_settlement_algorithm_fifo)
+    {
       PrintToLog("\nPNL_total_main = %f", PNL_total);
       PrintToLog("\n\n");
-  }
+    }
 
   if(msc_debug_settlement_algorithm_fifo) PrintToLog("\nnonzero_lives : %d\n",nonzero_lives);
-
 }
 
 void PushBackLives(int IdPosition, std::string AddrsLives, std::string Status, long int NLives, double EntryPrice, long int EdgeRow, long int PathNumber, std::map<std::string, std::string> LivesLongsEle, std::vector<std::map<std::string, std::string>> &LivesLongs, std::map<std::string, std::string> LivesShortsEle, std::vector<std::map<std::string, std::string>> &LivesShorts)
@@ -511,6 +563,7 @@ void PushBackLives(int IdPosition, std::string AddrsLives, std::string Status, l
       LivesShorts.push_back(LivesShortsEle);
     }
 }
+
 
 void IncreasedLastPos(std::vector<std::vector<std::map<std::string, std::string>>> path_main, long int LastEdgeRow, std::string AddrsLives, std::map<std::string, std::string> LivesLongsEle, std::vector<std::map<std::string, std::string>> &LivesLongs, std::map<std::string, std::string> LivesShortsEle, std::vector<std::map<std::string, std::string>> &LivesShorts)
 {
@@ -934,6 +987,7 @@ void checking_zeronetted_bypath(std::vector<std::map<std::string, std::string>> 
     PrintToLog("¡¡Warning!! There is no zero netted event in the path");
 }
 
+//counting lives contracts in positions
 void computing_livesvectors_forlongshort(std::vector<std::map<std::string, std::string>> &it_path_main, std::vector<std::map<std::string, std::string>> &lives_longs, std::vector<std::map<std::string, std::string>> &lives_shorts)
 {
 	std::map<std::string, std::string> path_ele;
@@ -962,6 +1016,7 @@ void computing_livesvectors_forlongshort(std::vector<std::map<std::string, std::
     }
 }
 
+//counting lives contracts in positions
 void counting_lives_longshorts(std::vector<std::map<std::string, std::string>> &lives_longs, std::vector<std::map<std::string, std::string>> &lives_shorts)
 {
   long int nlives_longs = 0;
@@ -983,12 +1038,14 @@ void counting_lives_longshorts(std::vector<std::map<std::string, std::string>> &
   if (nlives_longs != nlives_shorts) PrintToLog("\n\nWarning!! Lives Longs sould be equal to Lives Shorts\n\n");
 }
 
+//counting lives contracts in positions
 void computing_livesvector_global(std::vector<std::map<std::string, std::string>> lives_longs, std::vector<std::map<std::string, std::string>> lives_shorts, std::vector<std::map<std::string, std::string>> &lives_longs_vg, std::vector<std::map<std::string, std::string>> &lives_shorts_vg)
 {
   getting_globallives_long_short(lives_longs, lives_longs_vg);
   getting_globallives_long_short(lives_shorts, lives_shorts_vg);
 }
 
+//counting lives contracts in positions
 void printing_lives_vector(std::vector<std::map<std::string, std::string>> lives)
 {
   for (std::vector<std::map<std::string, std::string>>::iterator it = lives.begin(); it != lives.end(); ++it)
@@ -997,6 +1054,7 @@ void printing_lives_vector(std::vector<std::map<std::string, std::string>> lives
     }
 }
 
+//counting lives contracts in positions
 void getting_globallives_long_short(std::vector<std::map<std::string, std::string>> lives, std::vector<std::map<std::string, std::string>> &lives_vg)
 {
   for (std::vector<std::map<std::string, std::string>>::iterator it = lives.begin(); it != lives.end(); ++it)
@@ -1031,6 +1089,7 @@ int find_posaddress_lives_vector(std::vector<std::map<std::string, std::string>>
   return idx_q-1;
 }
 
+// exit prices por each edge
 void computing_settlement_exitprice(std::vector<std::map<std::string, std::string>> &it_path_main, long int &sum_oflives, double &PNL_total, double &gamma_p, double &gamma_q, int64_t interest, int64_t twap_price)
 {
   long int sum_oflivesh = 0;
@@ -1054,6 +1113,7 @@ void computing_settlement_exitprice(std::vector<std::map<std::string, std::strin
     }
 }
 
+// pnl for each path
 void calculate_pnltrk_bypath(std::vector<std::map<std::string, std::string>> &path_main, double &PNL_total, std::unordered_set<std::string> &addrs_set, std::vector<std::string> addrsv, int64_t interest, int64_t twap_price)
 {
   std::vector<std::map<std::string, std::string>>::iterator it_path;
@@ -1135,14 +1195,14 @@ void calculate_pnl_forghost(std::vector<std::map<std::string, std::string>> path
   double PNL_src;
   double PNL_trk;
 
-  if(msc_debug_calculate_pnl_forghost) PrintToLog("\nChecking PNL for Ghosts\n");
+  //if(msc_debug_calculate_pnl_forghost) PrintToLog("\nChecking PNL for Ghosts\n");
   for (it_path = path_ghost.begin(); it_path != path_ghost.end(); ++it_path)
-  {
-    PNL_src = PNL_ghosts(stod((*it_path)["entry_price_src"]), stod((*it_path)["exit_price"]), stol((*it_path)["amount_trd"]), (*it_path)["status_src"]);
-    PNL_trk = PNL_ghosts(stod((*it_path)["entry_price_trk"]), stod((*it_path)["exit_price"]), stol((*it_path)["amount_trd"]), (*it_path)["status_trk"]);
-    sumPNL_trk += PNL_src + PNL_trk;
-    if(msc_debug_calculate_pnl_forghost) PrintToLog("\nPNL_src = %f\t PNL_trk = %f\t sumPNL_trk = %f\n", PNL_src, PNL_trk, sumPNL_trk);
-  }
+    {
+      PNL_src = PNL_ghosts(stod((*it_path)["entry_price_src"]), stod((*it_path)["exit_price"]), stol((*it_path)["amount_trd"]), (*it_path)["status_src"]);
+      PNL_trk = PNL_ghosts(stod((*it_path)["entry_price_trk"]), stod((*it_path)["exit_price"]), stol((*it_path)["amount_trd"]), (*it_path)["status_trk"]);
+      sumPNL_trk += PNL_src + PNL_trk;
+      //if(msc_debug_calculate_pnl_forghost) PrintToLog("\nPNL_src = %f\t PNL_trk = %f\t sumPNL_trk = %f\n", PNL_src, PNL_trk, sumPNL_trk);
+    }
 }
 
 void listof_addresses_lives(std::vector<std::map<std::string, std::string>> lives, std::vector<std::string> &addrsv)
@@ -1159,6 +1219,8 @@ void listof_addresses_lives(std::vector<std::map<std::string, std::string>> live
     addrsv = addrsvh;
 }
 
+
+// all addresses involved in settlement algo
 std::vector<std::string> AddressesList(std::vector<std::vector<std::map<std::string, std::string>>> &path_main)
 {
 	std::vector<std::string> AddrsV;
@@ -1224,6 +1286,7 @@ void LivesNotZeroHelper(std::string AddrsTrk, std::string AddrsI, std::string Li
     }
 }
 
+// addresses in same path
 void listof_addresses_bypath(std::vector<std::map<std::string, std::string>> &it_path_main, std::vector<std::string> &addrsv)
 {
 	std::vector<std::string> addrsvh;

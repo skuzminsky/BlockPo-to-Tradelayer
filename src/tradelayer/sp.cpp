@@ -112,6 +112,11 @@ bool CMPSPInfo::Entry::isPegged() const
 //   return false;
 // }
 
+bool CMPSPInfo::Entry::isExpired() const
+{
+    return ((expirated) ? true : false);
+}
+
 void CMPSPInfo::Entry::print() const
 {
   PrintToLog("%s:%s(Fixed=%s,Divisible=%s):%d:%s/%s, %s %s\n",

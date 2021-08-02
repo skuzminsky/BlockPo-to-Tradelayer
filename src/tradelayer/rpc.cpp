@@ -2077,7 +2077,6 @@ UniValue tl_gettradehistory(const JSONRPCRequest& request)
   UniValue response(UniValue::VARR);
 
   LOCK(cs_tally);
-
   t_tradelistdb->getMatchingTrades(contractId, response);
 
   return response;
