@@ -93,30 +93,6 @@ bool CMPSPInfo::Entry::isPegged() const
   return false;
 }
 
-// bool CMPSPInfo::Entry::isContract() const
-// {
-//     switch (prop_type)
-//         {
-//             case ALL_PROPERTY_TYPE_NATIVE_CONTRACT:
-//                 return true;
-//
-//             case ALL_PROPERTY_TYPE_ORACLE_CONTRACT:
-//                 return true;
-//
-//             case ALL_PROPERTY_TYPE_PERPETUAL_ORACLE:
-//                 return true;
-//
-//             case ALL_PROPERTY_TYPE_PERPETUAL_CONTRACTS:
-//                 return true;
-//     }
-//   return false;
-// }
-
-bool CMPSPInfo::Entry::isExpired() const
-{
-    return ((expirated) ? true : false);
-}
-
 void CMPSPInfo::Entry::print() const
 {
   PrintToLog("%s:%s(Fixed=%s,Divisible=%s):%d:%s/%s, %s %s\n",

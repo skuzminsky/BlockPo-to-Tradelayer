@@ -129,6 +129,9 @@ public:
         bool isContract() const;
         bool isInverseQuoted() const { return inverse_quoted; };
         uint32_t getCollateral() const { return collateral_currency; }
+        uint32_t getNotionalSize() const { return notional_size; }
+        uint32_t getMarginRequirement() const { return margin_requirement; }
+
     };
 
  private:

@@ -146,8 +146,8 @@ unsigned int path_length;
 
 CMPTxList *mastercore::p_txlistdb;
 CMPTradeList *mastercore::t_tradelistdb;
-CMPSettlementList *mastercore::pt_settlementlistdb;
 CtlTransactionDB *mastercore::p_TradeTXDB;
+CMPSettlementList *mastercore::pt_settlementlistdb;
 OfferMap mastercore::my_offers;
 AcceptMap mastercore::my_accepts;
 CMPSPInfo *mastercore::_my_sps;
@@ -3041,9 +3041,9 @@ int mastercore_shutdown()
  *
  * @return True, if everything is ok
  */
-bool CallingSettlement()
-{
-    int nBlockNow = GetHeight();
+// bool CallingSettlement()
+// {
+//     int nBlockNow = GetHeight();
 
     /*uint32_t nextSPID = _my_sps->peekNextSPID(1);
 
@@ -3124,43 +3124,43 @@ bool CallingSettlement()
     /***********************************************************************/
 /** Calling The Settlement Algorithm **/
 
-if (nBlockNow%BlockS == 0 && nBlockNow != 0 && path_elef.size() != 0 && lastBlockg != nBlockNow)
-{
-
-     PrintToLog("\nSETTLEMENT : every 8 hours here. nBlockNow = %d\n", nBlockNow);
-     pt_ndatabase = new MatrixTLS(path_elef.size(), n_cols); MatrixTLS &ndatabase = *pt_ndatabase;
-     MatrixTLS M_file(path_elef.size(), n_cols);
-     fillingMatrix(M_file, ndatabase, path_elef);
-     n_rows = size(M_file, 0);
-     PrintToLog("Matrix for Settlement: dim = (%d, %d)\n\n", n_rows, n_cols);
-
-      /*****************************************************************************/
-      cout << "\n\n";
-      PrintToLog("\nCalling the Settlement Algorithm:\n\n");
-      int64_t twap_priceCDEx  = 0;
-      int64_t interest = 0;
-
-      //TODO: we need to add here insurance logic
-      settlement_algorithm_fifo(M_file, interest, twap_priceCDEx);
-
-      /**********************************************************************/
-      /** Unallocating Dynamic Memory **/
-
-      //path_elef.clear();
-      market_priceMap.clear();
-      VWAPMap.clear();
-      VWAPMapSubVector.clear();
-      numVWAPVector.clear();
-      denVWAPVector.clear();
-      mapContractAmountTimesPrice.clear();
-      mapContractVolume.clear();
-      VWAPMapContracts.clear();
-      cdextwap_vec.clear();
-
-   }
-
-   return true;
-}
+// if (nBlockNow%BlockS == 0 && nBlockNow != 0 && path_elef.size() != 0 && lastBlockg != nBlockNow)
+// {
+//
+//      PrintToLog("\nSETTLEMENT : every 8 hours here. nBlockNow = %d\n", nBlockNow);
+//      pt_ndatabase = new MatrixTLS(path_elef.size(), n_cols); MatrixTLS &ndatabase = *pt_ndatabase;
+//      MatrixTLS M_file(path_elef.size(), n_cols);
+//      fillingMatrix(M_file, ndatabase, path_elef);
+//      n_rows = size(M_file, 0);
+//      PrintToLog("Matrix for Settlement: dim = (%d, %d)\n\n", n_rows, n_cols);
+//
+//       /*****************************************************************************/
+//       cout << "\n\n";
+//       PrintToLog("\nCalling the Settlement Algorithm:\n\n");
+//       int64_t twap_priceCDEx  = 0;
+//       int64_t interest = 0;
+//
+//       //TODO: we need to add here insurance logic
+//       settlement_algorithm_fifo(M_file, interest, twap_priceCDEx);
+//
+//       /**********************************************************************/
+//       /** Unallocating Dynamic Memory **/
+//
+//       //path_elef.clear();
+//       market_priceMap.clear();
+//       VWAPMap.clear();
+//       VWAPMapSubVector.clear();
+//       numVWAPVector.clear();
+//       denVWAPVector.clear();
+//       mapContractAmountTimesPrice.clear();
+//       mapContractVolume.clear();
+//       VWAPMapContracts.clear();
+//       cdextwap_vec.clear();
+//
+//    }
+//
+//    return true;
+// }
 
 
 /**
@@ -4195,6 +4195,13 @@ bool CMPSettlementList::SettlementAlgorithm(int starting_block, int ending_block
   PrintToLog("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 
   n_rows = size(M_file, 0);
+
+  if (n_rows == 0)
+  {
+      PrintToLog("\n %s(): Returning false from function, n_rows == 0\n",__func__);
+      return false;
+  }
+
   PrintToLog("Matrix for Settlement: dim = (%d, %d)\n\n", n_rows, n_cols);
   printing_matrix(M_file);
 
@@ -4207,7 +4214,7 @@ bool CMPSettlementList::SettlementAlgorithm(int starting_block, int ending_block
   //////////////////////////////////////////////////////
 
   std::clock_t c_start = std::clock();
-  settlement_algorithm_fifo(M_file, interest, twap_priceCDEx);
+  settlement_algorithm_fifo(M_file, interest, twap_priceCDEx, property_traded);
   std::clock_t c_end = std::clock();
 
   long double time_elapsed_ms = 1000.0*(c_end-c_start)/CLOCKS_PER_SEC;
@@ -4258,14 +4265,14 @@ bool mastercore::isMPinBlockRange(int starting_block, int ending_block, bool bDe
   return p_txlistdb->isMPinBlockRange(starting_block, ending_block, bDeleteFound);
 }
 
-bool mastercore::SettlementAlgorithm(int starting_block, int ending_block, bool bDeleteFound)
-{
-  if (!pt_settlementlistdb) return false;
-
-  if (0 == ending_block) ending_block = GetHeight();
-
-  return pt_settlementlistdb->SettlementAlgorithm(starting_block, ending_block, bDeleteFound, 0);
-}
+// bool mastercore::SettlementAlgorithm(int starting_block, int ending_block, bool bDeleteFound)
+// {
+//   if (!pt_settlementlistdb) return false;
+//
+//   if (0 == ending_block) ending_block = GetHeight();
+//
+//   return pt_settlementlistdb->SettlementAlgorithm(starting_block, ending_block, bDeleteFound, 0);
+// }
 
 // call it like so (variable # of parameters):
 // int block = 0;
@@ -4337,28 +4344,26 @@ void checkContractSettlement(int block)
         return;
     }
 
-    const uint32_t nextSPID = _my_sps->peekNextSPID();
+    const uint32_t nextSPID = _my_cds->peekNextContractID();
 
     // looping through contracts
-    for (uint32_t propertyId = 1; propertyId < nextSPID; propertyId++)
+    for (uint32_t contractId = 1; contractId < nextSPID; contractId++)
     {
-        CMPSPInfo::Entry sp;
+        CDInfo::Entry cd;
 
         // only actives contracts ids
-        if (!_my_sps->getSP(propertyId, sp) || !sp.isContract() || sp.isExpired())
+        if (!_my_cds->getCD(contractId, cd))
         {
             continue;
         }
 
         // calling settlement for each contract
-        pt_settlementlistdb->SettlementAlgorithm(block, reorgRecoveryMaxHeight, true, propertyId);
+        pt_settlementlistdb->SettlementAlgorithm(block, reorgRecoveryMaxHeight, true, contractId);
 
   }
 
   // unallocating Dynamic Memory
   market_priceMap.clear();
-  numVWAPMap.clear();
-  denVWAPMap.clear();
   VWAPMap.clear();
   VWAPMapSubVector.clear();
   numVWAPVector.clear();
@@ -4432,11 +4437,10 @@ int mastercore_handler_block_begin(int nBlockPrev, CBlockIndex const * pBlockInd
   /*****************************************************************************/
   /** Perpetual Settlement Algorithm from LevelDB **/
   int BlockH = pBlockIndex->nHeight;
-  if (BlockH%BlockS == 0 && BlockH != 0)
-  {
-      PrintToLog("\nCalling Settlement from LevelDB!!");
-      checkContractSettlement(BlockH);
-  }
+
+  PrintToLog("\nCalling Settlement from LevelDB!!");
+  checkContractSettlement(BlockH);
+
 
   /*****************************************************************************/
 

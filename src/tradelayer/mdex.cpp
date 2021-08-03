@@ -226,7 +226,7 @@ void mastercore::x_TradeBidirectional(typename cd_PricesMap::iterator &it_fwdPri
   cd_Set::iterator offerIt = pofferSet->begin();
 
   while ( offerIt != pofferSet->end() )  /** Specific price, check all properties */
-    {
+  {
       const CMPContractDex* const pold = &(*offerIt);
 
       assert(pold->getEffectivePrice() == sellerPrice);
@@ -1228,54 +1228,9 @@ void mastercore::x_TradeBidirectional(typename cd_PricesMap::iterator &it_fwdPri
   pofferSet->erase(offerIt++);
 
   if (0 < remaining)
-    pofferSet->insert(contract_replacement);
-    }
-   /********************************************************/
-   t_tradelistdb->recordMatchedTrade(pold->getHash(),
-					pnew->getHash(),
-					pold->getAddr(),
-					pnew->getAddr(),
-					pold->getEffectivePrice(),
-					contract_replacement.getAmountForSale(),
-					pnew->getAmountForSale(),
-					pold->getBlock(),
-					pnew->getBlock(),
-					property_traded,
-					tradeStatus,
-					lives_maker0,
-					lives_maker1,
-					lives_maker2,
-					lives_maker3,
-					lives_taker0,
-					lives_taker1,
-					lives_taker2,
-					lives_taker3,
-					Status_maker0,
-					Status_taker0,
-					Status_maker1,
-					Status_taker1,
-					Status_maker2,
-					Status_taker2,
-					Status_maker3,
-					Status_taker3,
-					nCouldBuy0,
-					nCouldBuy1,
-					nCouldBuy2,
-					nCouldBuy3,
-					amountpnew,
-					amountpold);
-          /********************************************************/
+      pofferSet->insert(contract_replacement);
 
-          cdexlastprice[property_traded] = pold->getEffectivePrice();
-          // if(msc_debug_x_trade_bidirectional) PrintToLog("%s: marketPrice = %d\n",__func__, pold->getEffectivePrice());
-          // t_tradelistdb->recordForUPNL(pnew->getHash(),pnew->getAddr(),property_traded,pold->getEffectivePrice());
-
-          // if(msc_debug_x_trade_bidirectional) PrintToLog("++ erased old: %s\n", offerIt->ToString());
-          pofferSet->erase(offerIt++);
-
-          if (0 < remaining)
-	            pofferSet->insert(contract_replacement);
-      }
+  }
 }
 
 static const std::string getTradeReturnType(MatchReturnType ret)
