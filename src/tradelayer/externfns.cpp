@@ -86,13 +86,14 @@ bool find_string_strv(std::string s, std::vector<std::string> v)
 {
   bool find_bool = false;
   for (std::vector<std::string>::iterator it = v.begin(); it != v.end(); ++it)
-    {
+  {
       if ( finding_string(s, *it) )
-	{
-	  find_bool = true;
-	  break;
-	}
-    }
+	    {
+	        find_bool = true;
+	        break;
+	    }
+  }
+  
   return find_bool;
 }
 

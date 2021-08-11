@@ -108,15 +108,15 @@ bool msc_debug_activate_feature                 = 0;
 bool msc_debug_deactivate_feature               = 0;
 bool msc_debug_is_transaction_type_allowed      = 0;
 bool msc_debug_instant_payment                  = 1;
-bool msc_debug_settlement_algorithm_fifo        = 0;
-bool msc_debug_clearing_operator_fifo           = 0;
+bool msc_debug_settlement_algorithm_fifo        = 1;
+bool msc_debug_clearing_operator_fifo           = 1;
 bool msc_debug_counting_lives_longshorts        = 0;
-bool msc_debug_calculate_pnl_forghost           = 0;
+bool msc_debug_calculate_pnl_forghost           = 1;
 bool msc_debug_withdrawal_from_channel          = 0;
 bool msc_debug_populate_rpc_transaction_obj     = 0;
 bool msc_debug_fill_tx_input_cache              = 0;
 bool msc_debug_try_add_second                   = 0;
-bool msc_debug_liquidation_enginee              = 1;
+bool msc_debug_liquidation_enginee              = 0;
 
 /**
  * LogPrintf() has been broken a couple of times now

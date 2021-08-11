@@ -4208,10 +4208,31 @@ bool CMPSettlementList::SettlementAlgorithm(int starting_block, int ending_block
   cout << "\n\n";
   PrintToLog("\nCalling the Settlement Algorithm:\n\n");
 
-  // this data should be retrieved from propertyId loop
-  int64_t twap_priceCDEx  = 0;
-  int64_t interest = 0;
-  //////////////////////////////////////////////////////
+  PrintToLog("\nVector CDExtwap_vec =\n");
+   for (unsigned int i = 0; i < cdextwap_vec[property_traded].size(); i++)
+        PrintToLog("%s\n", FormatDivisibleMP(cdextwap_vec[property_traded][i]));
+
+  uint64_t num_cdex = accumulate(cdextwap_vec[property_traded].begin(), cdextwap_vec[property_traded].end(), 0.0);
+
+  rational_t twap_priceRatCDEx;
+
+  PrintToLog("\n num_cdex: %d, cdextwap_vec[property_traded].size(): %d\n",num_cdex, cdextwap_vec[property_traded].size());
+
+  // zero protection
+  if (num_cdex == 0 || cdextwap_vec[property_traded].size() == 0) {
+       twap_priceRatCDEx = 0;
+  } else {
+      rational_t twap_priceRatCDEx(num_cdex/COIN, cdextwap_vec[property_traded].size());
+  }
+
+
+  int64_t twap_priceCDEx = mastercore::RationalToInt64(twap_priceRatCDEx);
+  PrintToLog("\nTvwap Price CDEx = %s\n", FormatDivisibleMP(twap_priceCDEx));
+
+  // int64_t twap_priceCDEx  = 0;
+  // int64_t interest = clamp_function(abs(twap_priceCDEx-twap_priceMDEx), 0.05);
+  int64_t interest = 5000000;
+  PrintToLog("Interes to Pay = %s", FormatDivisibleMP(interest));
 
   std::clock_t c_start = std::clock();
   settlement_algorithm_fifo(M_file, interest, twap_priceCDEx, property_traded);
@@ -4339,16 +4360,23 @@ bool mastercore::getValidMPTX(const uint256 &txid, std::string *reason, int *blo
 void checkContractSettlement(int block)
 {
     // settlement each 300 blocks
-    if (block%BlockS != 0 || block == 0)
-    {
-        return;
+    // if (block%BlockS != 0 || block == 0)
+    // {
+    //     return;
+    // }
+
+    if (block != 350){
+       return;
     }
+
+    PrintToLog("%s(): block 350, time to settle all\n",__func__);
 
     const uint32_t nextSPID = _my_cds->peekNextContractID();
 
     // looping through contracts
     for (uint32_t contractId = 1; contractId < nextSPID; contractId++)
     {
+        PrintToLog("%s(): contractId: %d\n",__func__, contractId);
         CDInfo::Entry cd;
 
         // only actives contracts ids
@@ -4431,14 +4459,14 @@ int mastercore_handler_block_begin(int nBlockPrev, CBlockIndex const * pBlockInd
     /** Contracts **/
     if (pBlockIndex->nHeight > params.MSC_CONTRACTDEX_BLOCK)
     {
-        LiquidationEngine(pBlockIndex->nHeight);
+        // LiquidationEngine(pBlockIndex->nHeight);
     }
 
   /*****************************************************************************/
   /** Perpetual Settlement Algorithm from LevelDB **/
   int BlockH = pBlockIndex->nHeight;
 
-  PrintToLog("\nCalling Settlement from LevelDB!!");
+  // PrintToLog("\nCalling Settlement from LevelDB!!");
   checkContractSettlement(BlockH);
 
 
@@ -5639,8 +5667,8 @@ void CMPTradeList::recordMatchedTrade(const uint256 txid1, const uint256 txid2, 
 
   unsigned int contractId = static_cast<unsigned int>(property_traded);
   CDInfo::Entry cd;
-  assert(_my_cds->getCD(property_traded, cd));
-  uint32_t NotionalSize = cd.notional_size;
+  assert(_my_cds->getCD(contractId, cd));
+  uint32_t NotionalSize = cd.getNotionalSize();
 
   globalPNLALL_DUSD += UPNL1 + UPNL2;
   globalVolumeALL_DUSD += nCouldBuy0;
@@ -5664,12 +5692,12 @@ void CMPTradeList::recordMatchedTrade(const uint256 txid1, const uint256 txid2, 
   /** fileglobalPNLALL_DUSD.txt, fileglobalVolumeALL_DUSD files built**/
   std::fstream fileglobalPNLALL_DUSD;
   fileglobalPNLALL_DUSD.open ("globalPNLALL_DUSD.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-  if (contractId == 5) saveDataGraphs(fileglobalPNLALL_DUSD, std::to_string(globalPNLALL_DUSD));
+  if (contractId == 1) saveDataGraphs(fileglobalPNLALL_DUSD, std::to_string(globalPNLALL_DUSD));
   fileglobalPNLALL_DUSD.close();
 
   std::fstream fileglobalVolumeALL_DUSD;
   fileglobalVolumeALL_DUSD.open ("globalVolumeALL_DUSD.txt", std::fstream::in | std::fstream::out | std::fstream::app);
-  if (contractId == 5) saveDataGraphs(fileglobalVolumeALL_DUSD, std::to_string(FormatShortIntegerMP(globalVolumeALL_DUSD)));
+  if (contractId == 1) saveDataGraphs(fileglobalVolumeALL_DUSD, std::to_string(FormatShortIntegerMP(globalVolumeALL_DUSD)));
   fileglobalVolumeALL_DUSD.close();
 
   Status status;

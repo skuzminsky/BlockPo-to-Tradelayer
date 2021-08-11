@@ -115,7 +115,7 @@ int64_t Register::getUPNL(const uint32_t contractId, const uint32_t notionalSize
     const int64_t diff = exitPrice - entryPrice;
     const arith_uint256 dDiff = ConvertTo256(abs(diff));
 
-    PrintToLog("%s(): dEntryPrice: %d, dExitPrice: %d, factor: %d, diff: %d\n",__func__, ConvertTo64(dEntryPrice), ConvertTo64(dExitPrice), ConvertTo64(factor), diff);
+     if(msc_debug_liquidation_enginee) PrintToLog("%s(): dEntryPrice: %d, dExitPrice: %d, factor: %d, diff: %d\n",__func__, ConvertTo64(dEntryPrice), ConvertTo64(dExitPrice), ConvertTo64(factor), diff);
 
     arith_uint256 UPNL = 0;
 
