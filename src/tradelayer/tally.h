@@ -13,7 +13,7 @@ enum TallyType {
         METADEX_RESERVE = 4,
         CONTRACTDEX_RESERVE = 5, // margin acount
         CONTRACT_BALANCE = 6,
-	      UNVESTED = 7,
+        UNVESTED = 7,
         TALLY_TYPE_COUNT
 };
 

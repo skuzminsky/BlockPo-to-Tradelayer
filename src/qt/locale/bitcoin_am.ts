@@ -62,12 +62,8 @@
         <translation>የመቀበያ አድራሻዎች</translation>
     </message>
     <message>
-        <source>These are your Litecoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <source>These are your Bitcoin addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
         <translation>እነኚ የቢትኮይን ክፍያ የመላኪያ አድራሻዎችዎ ናቸው:: ገንዘብ/ኮይኖች ከመላክዎ በፊት መጠኑን እና የመቀበያ አድራሻውን ሁልጊዜ ያረጋግጡ::</translation>
-    </message>
-    <message>
-        <source>These are your Litecoin addresses for receiving payments. It is recommended to use a new receiving address for each transaction.</source>
-        <translation>እነኚ የቢትኮይን ክፍያ የመቀበያ አድራሻዎችዎ ናቸው:: ለእያንዳንዱ ግብይት አዲስ የመቀበያ አድራሻ እንዲጠቀሙ ይመከራል:: </translation>
     </message>
     <message>
         <source>&amp;Copy Address</source>
@@ -132,10 +128,6 @@
         <translation>አዲስ የይለፍ-ሐረጉን ይድገሙት</translation>
     </message>
     <message>
-        <source>Enter the new passphrase to the wallet.&lt;br/&gt;Please use a passphrase of &lt;b&gt;ten or more random characters&lt;/b&gt;, or &lt;b&gt;eight or more words&lt;/b&gt;.</source>
-        <translation>አዲስ የይለፍ ሐረግዎን ወደ ቢትኮይን ቦርሳዎ ያስገቡ:: &lt;br/&gt;እባክዎ ለየይለፍ ሐረግዎ&lt;b&gt;አስር ወይም ከዚያ በላይ የዘፈቀደ ዓይነተ-ፊደላት&lt;/b&gt;, ወይም&lt;b&gt;ስምንት ወይም ከዚያ በላይ ቃላት&lt;/b&gt; ይጠቀሙ ::</translation>
-    </message>
-    <message>
         <source>Encrypt wallet</source>
         <translation>የቢትኮይን ቦርሳውን አመስጥር</translation>
     </message>
@@ -160,15 +152,11 @@
         <translation>ይለፍ-ሐረግ ለውጥ</translation>
     </message>
     <message>
-        <source>Enter the old passphrase and new passphrase to the wallet.</source>
-        <translation>የድሮውን የይለፍ-ሐረግ እና አዲሱን የይለፍ-ሐረግ ወደ ቢትኮይን ቦርሳዎ ያስገቡ::</translation>
-    </message>
-    <message>
         <source>Confirm wallet encryption</source>
         <translation>የቢትኮይን ቦርሳዎን ማመስጠር ያረጋግጡ</translation>
     </message>
     <message>
-        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR LITECOINS&lt;/b&gt;!</source>
+        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR BITCOINS&lt;/b&gt;!</source>
         <translation>ማስጠንቀቂያ: የቢትኮይን ቦርሳዎን አመስጥረው የይለፍ-ሐረግዎን ካጡት&lt;b&gt;ቢትኮይኖቾን በሙሉ ያጣሉ&lt;/b&gt;!</translation>
     </message>
     <message>
@@ -178,10 +166,6 @@
     <message>
         <source>Wallet encrypted</source>
         <translation>ቦርሳዎ ምስጢር ተደርጓል</translation>
-    </message>
-    <message>
-        <source>%1 will close now to finish the encryption process. Remember that encrypting your wallet cannot fully protect your litecoins from being stolen by malware infecting your computer.</source>
-        <translation>%1 የማመስጠር ሂደቱን ለመጨረስ አሁን ይዘጋል:: ያስታውሱ፣ ኮምፒተርዎ በተንኮል አዘል ሶፍትዌር ከተበከለ ቦርሳዎን ማመስጠር ቢትኮይኖቾን ሙሉበሙሉ እንዳይሰረቁ ሊከላከል አይችልም::</translation>
     </message>
     <message>
         <source>IMPORTANT: Any previous backups you have made of your wallet file should be replaced with the newly generated, encrypted wallet file. For security reasons, previous backups of the unencrypted wallet file will become useless as soon as you start using the new, encrypted wallet.</source>
@@ -246,10 +230,6 @@
         <translation>&amp;አጠቃላይ እይታ</translation>
     </message>
     <message>
-        <source>Node</source>
-        <translation>እትር</translation>
-    </message>
-    <message>
         <source>Show general overview of wallet</source>
         <translation>የቦርሳ አጠቃላይ እይታ ኣሳይ</translation>
     </message>
@@ -289,37 +269,248 @@
         <source>&amp;Options...</source>
         <translation>&amp;አማራጮች...</translation>
     </message>
+    <message>
+        <source>Create Wallet...</source>
+        <translation>ዋሌት ፍጠር</translation>
+    </message>
+    <message>
+        <source>Create a new wallet</source>
+        <translation>አዲስ ዋሌት ፍጠር</translation>
+    </message>
+    <message>
+        <source>Wallet:</source>
+        <translation>ዋሌት</translation>
+    </message>
+    <message>
+        <source>&amp;Send</source>
+        <translation>&amp;ላክ</translation>
+    </message>
+    <message>
+        <source>&amp;Receive</source>
+        <translation>&amp;ተቀበል</translation>
+    </message>
+    <message>
+        <source>&amp;Show / Hide</source>
+        <translation>&amp;አሳይ/ ደብቅ</translation>
+    </message>
+    <message>
+        <source>&amp;File</source>
+        <translation>&amp;ፋይል</translation>
+    </message>
+    <message>
+        <source>&amp;Settings</source>
+        <translation>&amp;ቅንብሮች</translation>
+    </message>
+    <message>
+        <source>&amp;Help</source>
+        <translation>&amp;እርዳታ</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>ስህተት</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>ማሳስቢያ</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>መረጃ</translation>
+    </message>
+    <message>
+        <source>Open Wallet</source>
+        <translation>ዋሌት ክፈት</translation>
+    </message>
+    <message>
+        <source>Open a wallet</source>
+        <translation>ዋሌት ክፈት</translation>
+    </message>
+    <message>
+        <source>Close Wallet...</source>
+        <translation>ዋሌት ዝጋ...</translation>
+    </message>
+    <message>
+        <source>Close wallet</source>
+        <translation>ዋሌት ዝጋ</translation>
+    </message>
+    <message>
+        <source>default wallet</source>
+        <translation>መደበኛ ዋሌት</translation>
+    </message>
+    <message>
+        <source>Minimize</source>
+        <translation>አሳንስ</translation>
+    </message>
+    <message>
+        <source>Zoom</source>
+        <translation>እሳድግ</translation>
+    </message>
+    <message>
+        <source>Error: %1</source>
+        <translation>ስህተት፥ %1</translation>
+    </message>
+    <message>
+        <source>Warning: %1</source>
+        <translation>ማሳሰቢያ፥ %1</translation>
+    </message>
+    <message>
+        <source>Date: %1
+</source>
+        <translation>ቀን፥ %1
+</translation>
+    </message>
+    <message>
+        <source>Amount: %1
+</source>
+        <translation>መጠን፥ %1
+</translation>
+    </message>
+    <message>
+        <source>Address: %1
+</source>
+        <translation>አድራሻ፥ %1
+</translation>
+    </message>
     </context>
 <context>
     <name>CoinControlDialog</name>
+    <message>
+        <source>Quantity:</source>
+        <translation>ብዛት፥</translation>
+    </message>
+    <message>
+        <source>Amount:</source>
+        <translation>መጠን፥</translation>
+    </message>
+    <message>
+        <source>Fee:</source>
+        <translation>ክፍያ፥</translation>
+    </message>
+    <message>
+        <source>Amount</source>
+        <translation>መጠን</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>ቀን</translation>
+    </message>
+    <message>
+        <source>Copy address</source>
+        <translation>አድራሻ ቅዳ</translation>
+    </message>
+    <message>
+        <source>Copy amount</source>
+        <translation>መጠኑ ገልብጥ</translation>
+    </message>
+    <message>
+        <source>Copy fee</source>
+        <translation>ክፍያው ቅዳ</translation>
+    </message>
+    <message>
+        <source>yes</source>
+        <translation>አዎ</translation>
+    </message>
+    <message>
+        <source>no</source>
+        <translation>አይ</translation>
+    </message>
     <message>
         <source>(no label)</source>
         <translation>(መለያ ስም የለም)</translation>
     </message>
     </context>
 <context>
+    <name>CreateWalletActivity</name>
+    </context>
+<context>
+    <name>CreateWalletDialog</name>
+    <message>
+        <source>Wallet Name</source>
+        <translation>ዋሌት ስም</translation>
+    </message>
+    <message>
+        <source>Create</source>
+        <translation>ፍጠር</translation>
+    </message>
+</context>
+<context>
     <name>EditAddressDialog</name>
     </context>
 <context>
     <name>FreespaceChecker</name>
+    <message>
+        <source>name</source>
+        <translation>ስም</translation>
+    </message>
     </context>
 <context>
     <name>HelpMessageDialog</name>
+    <message>
+        <source>version</source>
+        <translation>ስሪት</translation>
+    </message>
+    <message>
+        <source>About %1</source>
+        <translation>ስለ እኛ %1</translation>
+    </message>
     </context>
 <context>
     <name>Intro</name>
+    <message>
+        <source>Welcome</source>
+        <translation>እንኳን ደህና መጣህ</translation>
+    </message>
+    <message>
+        <source>Welcome to %1.</source>
+        <translation>እንኳን  ወድ %1 በደህና መጣህ።</translation>
+    </message>
+    <message>
+        <source>Bitcoin</source>
+        <translation>ቢትኮይን</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>ስህተት</translation>
+    </message>
     </context>
 <context>
     <name>ModalOverlay</name>
+    <message>
+        <source>Form</source>
+        <translation>ከ</translation>
+    </message>
+    <message>
+        <source>Unknown...</source>
+        <translation>የማይታወቅ...</translation>
+    </message>
+    <message>
+        <source>Hide</source>
+        <translation>ደብቅ</translation>
+    </message>
     </context>
 <context>
     <name>OpenURIDialog</name>
     </context>
 <context>
+    <name>OpenWalletActivity</name>
+    <message>
+        <source>default wallet</source>
+        <translation>መደበኛ ዋሌት</translation>
+    </message>
+    </context>
+<context>
     <name>OptionsDialog</name>
+    <message>
+        <source>Error</source>
+        <translation>ስህተት</translation>
+    </message>
     </context>
 <context>
     <name>OverviewPage</name>
+    <message>
+        <source>Form</source>
+        <translation>ከ</translation>
+    </message>
     </context>
 <context>
     <name>PaymentServer</name>
@@ -329,9 +520,14 @@
     </context>
 <context>
     <name>QObject</name>
-    </context>
-<context>
-    <name>QObject::QObject</name>
+    <message>
+        <source>Amount</source>
+        <translation>መጠን</translation>
+    </message>
+    <message>
+        <source>Error: %1</source>
+        <translation>ስህተት፥ %1</translation>
+    </message>
     </context>
 <context>
     <name>QRImageWidget</name>
@@ -341,12 +537,20 @@
     </context>
 <context>
     <name>ReceiveCoinsDialog</name>
-    </context>
+    <message>
+        <source>Copy amount</source>
+        <translation>መጠኑ ገልብጥ</translation>
+    </message>
+</context>
 <context>
     <name>ReceiveRequestDialog</name>
     <message>
         <source>Address</source>
         <translation>አድራሻ</translation>
+    </message>
+    <message>
+        <source>Amount</source>
+        <translation>መጠን</translation>
     </message>
     <message>
         <source>Label</source>
@@ -355,6 +559,10 @@
     </context>
 <context>
     <name>RecentRequestsTableModel</name>
+    <message>
+        <source>Date</source>
+        <translation>ቀን</translation>
+    </message>
     <message>
         <source>Label</source>
         <translation>መለያ ስም</translation>
@@ -367,6 +575,30 @@
 <context>
     <name>SendCoinsDialog</name>
     <message>
+        <source>Quantity:</source>
+        <translation>ብዛት፥</translation>
+    </message>
+    <message>
+        <source>Amount:</source>
+        <translation>መጠን፥</translation>
+    </message>
+    <message>
+        <source>Fee:</source>
+        <translation>ክፍያ፥</translation>
+    </message>
+    <message>
+        <source>Hide</source>
+        <translation>ደብቅ</translation>
+    </message>
+    <message>
+        <source>Copy amount</source>
+        <translation>መጠኑ ገልብጥ</translation>
+    </message>
+    <message>
+        <source>Copy fee</source>
+        <translation>ክፍያው ቅዳ</translation>
+    </message>
+    <message>
         <source>(no label)</source>
         <translation>(መለያ ስም የለም)</translation>
     </message>
@@ -375,28 +607,34 @@
     <name>SendCoinsEntry</name>
     </context>
 <context>
-    <name>SendConfirmationDialog</name>
-    </context>
-<context>
     <name>ShutdownWindow</name>
     </context>
 <context>
     <name>SignVerifyMessageDialog</name>
     </context>
 <context>
-    <name>SplashScreen</name>
-    </context>
-<context>
     <name>TrafficGraphWidget</name>
     </context>
 <context>
     <name>TransactionDesc</name>
+    <message>
+        <source>Date</source>
+        <translation>ቀን</translation>
+    </message>
+    <message>
+        <source>Amount</source>
+        <translation>መጠን</translation>
+    </message>
     </context>
 <context>
     <name>TransactionDescDialog</name>
     </context>
 <context>
     <name>TransactionTableModel</name>
+    <message>
+        <source>Date</source>
+        <translation>ቀን</translation>
+    </message>
     <message>
         <source>Label</source>
         <translation>መለያ ስም</translation>
@@ -409,8 +647,20 @@
 <context>
     <name>TransactionView</name>
     <message>
+        <source>Copy address</source>
+        <translation>አድራሻ ቅዳ</translation>
+    </message>
+    <message>
+        <source>Copy amount</source>
+        <translation>መጠኑ ገልብጥ</translation>
+    </message>
+    <message>
         <source>Comma separated file (*.csv)</source>
         <translation>ኮማ ሴፓሬትድ ፋይል (*.csv)</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>ቀን</translation>
     </message>
     <message>
         <source>Label</source>
@@ -429,11 +679,22 @@
     <name>UnitDisplayStatusBarControl</name>
     </context>
 <context>
+    <name>WalletController</name>
+    <message>
+        <source>Close wallet</source>
+        <translation>ዋሌት ዝጋ</translation>
+    </message>
+    </context>
+<context>
     <name>WalletFrame</name>
     </context>
 <context>
     <name>WalletModel</name>
-    </context>
+    <message>
+        <source>default wallet</source>
+        <translation>መደበኛ ዋሌት</translation>
+    </message>
+</context>
 <context>
     <name>WalletView</name>
     <message>

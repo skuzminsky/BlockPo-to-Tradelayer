@@ -24,8 +24,8 @@ extern std::string GenerateConsensusString(const CMPOffer& offerObj, const std::
 extern std::string GenerateConsensusString(const CMPAccept& acceptObj, const std::string& address);
 extern std::string GenerateConsensusString(const uint32_t propertyId, const std::string& address);
 extern std::string GenerateConsensusString(const Channel& chn);
-extern std::string kycGenerateConsensusString(const std::vector<std::string>& vstr);
-extern std::string attGenerateConsensusString(const std::vector<std::string>& vstr);
+//extern std::string kycGenerateConsensusString(const std::vector<std::string>& vstr);
+//extern std::string attGenerateConsensusString(const std::vector<std::string>& vstr);
 extern std::string feeGenerateConsensusString(const uint32_t& propertyId, const int64_t& cache);
 extern std::string GenerateConsensusString(const FeatureActivation& feat);
 
@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE(consensus_string_tally)
     BOOST_CHECK_EQUAL("", GenerateConsensusString(tally, "3CwZ7FiQ4MqBenRdCkjjc41M5bnoKQGC2b", 3));
 
     BOOST_CHECK(tally.updateMoney(3, 7, BALANCE));
-    BOOST_CHECK_EQUAL("3CwZ7FiQ4MqBenRdCkjjc41M5bnoKQGC2b|3|7|0|0|0|0|0|0|0|0|0|0",
+    BOOST_CHECK_EQUAL("3CwZ7FiQ4MqBenRdCkjjc41M5bnoKQGC2b|3|7|0|0|0|0|0|0",
             GenerateConsensusString(tally, "3CwZ7FiQ4MqBenRdCkjjc41M5bnoKQGC2b", 3));
 
     BOOST_CHECK(tally.updateMoney(3, 7, BALANCE));
@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE(consensus_string_tally)
     BOOST_CHECK(tally.updateMoney(3, int64_t(9223372036854775807LL), ACCEPT_RESERVE));
     BOOST_CHECK(tally.updateMoney(3, (-int64_t(9223372036854775807LL)-1), PENDING)); // ignored
     BOOST_CHECK(tally.updateMoney(3, int64_t(4294967296L), METADEX_RESERVE));
-    BOOST_CHECK_EQUAL("3CwZ7FiQ4MqBenRdCkjjc41M5bnoKQGC2b|3|14|100|9223372036854775807|4294967296|0|0|0|0|0|0|0",
+    BOOST_CHECK_EQUAL("3CwZ7FiQ4MqBenRdCkjjc41M5bnoKQGC2b|3|14|100|9223372036854775807|-9223372036854775808|4294967296|0|0",
             GenerateConsensusString(tally, "3CwZ7FiQ4MqBenRdCkjjc41M5bnoKQGC2b", 3));
 }
 
@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(consensus_channel_address)
     const int last_exchange_block = 200;
 
     Channel chn(multisig, first, second, last_exchange_block);
-    BOOST_CHECK_EQUAL("3CwZ7FiQ4MqBenRdCkjjc41M5bnoKQGC2b|1PxejjeWZc9ZHph7A3SYDo2sk2Up4AcysH|16Mk17CGqLaz5qBxv93YxcXwFbzV7N7y6G|874|200",
+    BOOST_CHECK_EQUAL("3CwZ7FiQ4MqBenRdCkjjc41M5bnoKQGC2b|1PxejjeWZc9ZHph7A3SYDo2sk2Up4AcysH|16Mk17CGqLaz5qBxv93YxcXwFbzV7N7y6G|200",
             GenerateConsensusString(chn));
 }
 

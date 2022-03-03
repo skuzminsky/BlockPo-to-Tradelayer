@@ -26,8 +26,8 @@ BOOST_AUTO_TEST_CASE(class_d_marker)
     nMaxDatacarrierBytes = 40; // byte
 
     std::vector<unsigned char> vchMarker;
-    vchMarker.push_back(0x77); // "p"
-    vchMarker.push_back(0x77); // "q"
+    vchMarker.push_back(0x74); // "t"
+    vchMarker.push_back(0x74); // "t"
 
     std::vector<unsigned char> vchPayload = ParseHex("0000101");
 

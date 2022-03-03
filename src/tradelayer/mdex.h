@@ -243,7 +243,6 @@ namespace mastercore
   int ContractDex_ADD(const std::string& sender_addr, uint32_t prop, int64_t amount, int block, const uint256& txid, unsigned int idx, uint64_t effective_price, uint8_t trading_action, int64_t amountToReserve);
   bool ContractDex_INSERT(const CMPContractDex &objContractDex);
   void ContractDex_debug_print(bool bShowPriceLevel, bool bDisplay);
-  const CMPContractDex *ContractDex_RetrieveTrade(const uint256& txid);
   bool ContractDex_isOpen(const uint256& txid, uint32_t propertyIdForSale);
   int ContractDex_getStatus(const uint256& txid, uint32_t propertyIdForSale, int64_t amountForSale, int64_t totalSold);
   std::string ContractDex_getStatusText(int tradeStatus);
@@ -265,8 +264,6 @@ namespace mastercore
   ///////////////////////////////////
 
   int MetaDEx_ADD(const std::string& sender_addr, uint32_t, int64_t, int block, uint32_t property_desired, int64_t amount_desired, const uint256& txid, unsigned int idx);
-  int MetaDEx_CANCEL_AT_PRICE(const uint256&, uint32_t, const std::string&, uint32_t, int64_t, uint32_t, int64_t);
-  int MetaDEx_CANCEL_ALL_FOR_PAIR(const uint256&, uint32_t, const std::string&, uint32_t, uint32_t);
   int MetaDEx_CANCEL_EVERYTHING(const uint256& txid, uint32_t block, const std::string& sender_addr);
   int MetaDEx_CANCEL(const uint256& txid, const std::string& sender_addr, unsigned int block, const std::string& hash);
   int MetaDEx_CANCEL_ALL_FOR_PAIR(const uint256& txid, unsigned int block, const std::string& sender_addr, uint32_t prop, uint32_t property_desired);

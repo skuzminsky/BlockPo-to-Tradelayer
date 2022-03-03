@@ -10,7 +10,7 @@
 
 using namespace mastercore;
 
-CCriticalSection cs_register;
+RecursiveMutex cs_register;
 
 // list of all amounts for all addresses for all contracts, map is unsorted
 std::unordered_map<std::string, Register> mastercore::mp_register_map;
@@ -52,15 +52,6 @@ uint32_t Register::next()
         ++my_it;
     }
     return ret;
-}
-
-bool Register::isBegin()
-{
-    if (my_it == mp_record.begin()) {
-        return true;
-    } else {
-        return false;
-    }
 }
 
 int64_t Register::getPosExitPrice(const uint32_t contractId, bool isOracle) const

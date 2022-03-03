@@ -1030,7 +1030,7 @@ std::vector<unsigned char> CreatePayload_MetaDExCancelPair(uint32_t propertyIdFo
   return payload;
 }
 
-std::vector<unsigned char>CreatePayload_MetaDExCancelPrice(uint32_t propertyIdForSale, int64_t amountForSale, uint32_t propertyIdDesired, int64_t amountDesired)
+std::vector<unsigned char> CreatePayload_MetaDExCancelPrice(uint32_t propertyIdForSale, uint64_t amountForSale, uint32_t propertyIdDesired, uint64_t amountDesired)
 {
   std::vector<unsigned char> payload;
 

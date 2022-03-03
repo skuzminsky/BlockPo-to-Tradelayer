@@ -11,7 +11,7 @@
 #include <univalue.h>
 
 //! Global lock for state objects
-extern CCriticalSection cs_register;
+extern RecursiveMutex cs_register;
 
 //! User records for contracts
 enum RecordType {
@@ -24,7 +24,7 @@ enum RecordType {
   RECORD_TYPE_COUNT
 };
 
-extern bool isOverflow(int64_t a, int64_t b);
+//extern bool isOverflow(int64_t a, int64_t b);
 
 // in order to recalculate entry price (FIFO)
 typedef std::vector<std::pair<int64_t,int64_t>> Entries;

@@ -28,7 +28,7 @@ leveldb::Status CDBBase::Open(const fs::path& path, bool fWipe)
         leveldb::DestroyDB(path.string(), options);
     }
 
-    TryCreateDirectory(path);
+    TryCreateDirectories(path);
     if (msc_debug_persistence) PrintToLog("Opening LevelDB in %s\n", path.string());
 
     return leveldb::DB::Open(options, path.string(), &pdb);

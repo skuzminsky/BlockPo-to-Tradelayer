@@ -263,9 +263,8 @@ BOOST_AUTO_TEST_CASE(tally_equality)
     BOOST_CHECK(tally2.getMoneyAvailable(5) == 1);
     BOOST_CHECK(tally2.getMoneyAvailable(7) == 1);
 
-    BOOST_CHECK(tally1 != tally2);
-
-    BOOST_CHECK(tally1 != tally2);
+    //BOOST_CHECK(tally1 != tally2);
+    //BOOST_CHECK(tally1 != tally2);
 
     BOOST_CHECK(tally1 == tally2);
 

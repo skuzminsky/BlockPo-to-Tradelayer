@@ -56,7 +56,10 @@
 #include <util/strencodings.h>
 #include <util/time.h>
 #include <validation.h>
-#include <script/ismine.h>
+//#include <script/ismine.h>
+#include <wallet/coincontrol.h>
+#include <shutdown.h>
+#include <key_io.h>
 
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
@@ -104,7 +107,7 @@ using std::vector;
 using namespace mastercore;
 typedef boost::multiprecision::cpp_dec_float_100 dec_float;
 
-CCriticalSection cs_tally;
+RecursiveMutex cs_tally;
 typedef boost::multiprecision::uint128_t ui128;
 
 static int nWaterlineBlock = 0;
@@ -721,7 +724,7 @@ CCoinsView mastercore::viewDummy;
 CCoinsViewCache mastercore::view(&viewDummy);
 
 //! Guards coins view cache
-CCriticalSection mastercore::cs_tx_cache;
+RecursiveMutex mastercore::cs_tx_cache;
 
 static unsigned int nCacheHits = 0;
 static unsigned int nCacheMiss = 0;
@@ -765,11 +768,13 @@ static bool FillTxInputCache(const CTransaction& tx, const std::shared_ptr<std::
             newcoin = removedCoins->find(txIn.prevout)->second;
             if(msc_debug_fill_tx_input_cache) PrintToLog("%s(): newcoin = removedCoins->find(txIn.prevout)->second \n",__func__);
         } else if (GetTransaction(txIn.prevout.hash, txPrev, Params().GetConsensus(), hashBlock, true)) {
-
             newcoin.out.scriptPubKey = txPrev->vout[nOut].scriptPubKey;
             newcoin.out.nValue = txPrev->vout[nOut].nValue;
-            if(msc_debug_fill_tx_input_cache) PrintToLog("%s():GetTransaction == true, nValue: %d\n",__func__, txPrev->vout[nOut].nValue);
-            BlockMap::iterator bit = mapBlockIndex.find(hashBlock);
+            if(msc_debug_fill_tx_input_cache) {
+                PrintToLog("%s():GetTransaction == true, nValue: %d\n",__func__, txPrev->vout[nOut].nValue);
+            }
+            auto mapBlockIndex = BlockIndex();
+            auto bit = mapBlockIndex.find(hashBlock);
             newcoin.nHeight = bit != mapBlockIndex.end() ? bit->second->nHeight : 1;
         } else {
             if(msc_debug_fill_tx_input_cache) PrintToLog("%s():GetTransaction == false\n",__func__);
@@ -1329,7 +1334,7 @@ static int msc_initial_scan(int nFirstBlock)
     }
 
     // used to print the progress to the console and notifies the UI
-    ProgressReporter progressReporter(chainActive[nFirstBlock], chainActive[nLastBlock]);
+    ProgressReporter progressReporter(ChainActive()[nFirstBlock], ChainActive()[nLastBlock]);
 
     for (nBlock = nFirstBlock; nBlock <= nLastBlock; ++nBlock)
     {
@@ -1338,7 +1343,7 @@ static int msc_initial_scan(int nFirstBlock)
             break;
         }
 
-        CBlockIndex* pblockindex = chainActive[nBlock];
+        CBlockIndex* pblockindex = ChainActive()[nBlock];
         if (nullptr == pblockindex) break;
 
         std::string strBlockHash = pblockindex->GetBlockHash().GetHex();
@@ -2209,7 +2214,7 @@ static int msc_file_load(const string &filename, int what, bool verifyHash = fal
     case FILETYPE_MDEXORDERS:
         // FIXME
         // memory leak ... gotta unallocate inner layers first....
-        // TODO
+        // TODO.
         // ...
         metadex.clear();
         inputLineFunc = input_mp_mdexorder_string;
@@ -2450,7 +2455,7 @@ static int load_most_relevant_state()
   {
       LOCK2(cs_main, cs_tally);
 
-      while (nullptr != spBlockIndex && false == chainActive.Contains(spBlockIndex))
+      while (nullptr != spBlockIndex && false == ChainActive().Contains(spBlockIndex))
       {
           int remainingSPs = _my_sps->popBlock(spBlockIndex->GetBlockHash());
           PrintToLog("%s(): first while loop, remainingSPs: %d\n",__func__, remainingSPs);
@@ -2488,7 +2493,7 @@ static int load_most_relevant_state()
               uint256 blockHash;
               blockHash.SetHex(vstr[1]);
               CBlockIndex *pBlockIndex = GetBlockIndex(blockHash);
-              if (pBlockIndex == nullptr || !chainActive.Contains(pBlockIndex)) {
+              if (pBlockIndex == nullptr || !ChainActive().Contains(pBlockIndex)) {
                   continue;
               }
 
@@ -2645,15 +2650,15 @@ static int write_contract_globals_state(ofstream &file, CHash256& hasher)
 
 static int write_mp_contractdex(ofstream &file, CHash256& hasher)
 {
-    for (const auto con : contractdex)
+    for (const auto& con : contractdex)
     {
         const cd_PricesMap &prices = con.second;
 
-        for (const auto p : prices)
+        for (const auto& p : prices)
         {
             const cd_Set &indexes = p.second;
 
-            for (const auto in : indexes)
+            for (const auto& in : indexes)
             {
 
                 const CMPContractDex& contract = in;
@@ -3349,7 +3354,7 @@ int mastercore_init()
   p_TradeTXDB = new CtlTransactionDB(GetDataDir() / "OCL_TXDB", fReindex);
   t_tradelistdb = new CMPTradeList(GetDataDir()/"OCL_tradelist", fReindex);
   MPPersistencePath = GetDataDir() / "OCL_persist";
-  TryCreateDirectory(MPPersistencePath);
+  TryCreateDirectories(MPPersistencePath);
 
   bool wrongDBVersion = (p_txlistdb->getDBVersion() != DB_VERSION);
 
@@ -3966,7 +3971,7 @@ bool nodeReward::isWinnerAddress(const std::string& consensusHash, const std::st
 
     std::vector<unsigned char> vch;
 
-    DecodeBase58(address, vch);
+    if (!DecodeBase58(address, vch, 256)) return false;
 
     const std::string vchStr = HexStr(vch);
     const std::string LastThreeCharAddr = vchStr.substr(vchStr.size() - lastNterms);
@@ -4105,89 +4110,118 @@ int mastercore::WalletTxBuilder(const std::string& senderAddress, const std::str
 }
 
 // This function requests the wallet create an Trade Layer transaction using the supplied parameters and payload
-int mastercore::WalletTxBuilderEx(const std::string& senderAddress, const std::vector<std::string>& receiverAddress, int64_t referenceAmount,
-				const std::vector<unsigned char>& data, uint256& txid, std::string& rawHex, bool commit,
-				unsigned int minInputs)
+int mastercore::WalletTxBuilderEx(
+        const std::string& senderAddress,
+		const std::vector<std::string>& receiverAddresses,
+		int64_t referenceAmount,
+		const std::vector<unsigned char>& data,
+		uint256& txid,
+		std::string& rawHex,
+		bool commit,
+		unsigned int minInputs)
 {
+
 #ifdef ENABLE_WALLET
 
-  CWalletRef pwalletMain = nullptr;
-  if (vpwallets.size() > 0){
-    pwalletMain = vpwallets[0];
-  }
+	CWalletRef pwalletMain = nullptr;
+	const auto& ww = GetWallets();
+    if (ww.empty()) {
+        return MP_ERR_WALLET_ACCESS;
+    } 
+    
+    pwalletMain = ww[0].get();
+	
+    auto locked_chain = pwalletMain->chain().lock();
+	LOCK(pwalletMain->cs_wallet);
 
-  if (pwalletMain == nullptr) return MP_ERR_WALLET_ACCESS;
+	if (nMaxDatacarrierBytes < (data.size()+GetTLMarker().size())) { //xxx
+		return MP_ERR_PAYLOAD_TOO_BIG;
+	}
 
-  if (nMaxDatacarrierBytes < (data.size()+GetTLMarker().size())) return MP_ERR_PAYLOAD_TOO_BIG;
+	// TODO verify datacarrier is enabled at startup, otherwise we won't be able
+	// to send transactions.
+	//
+	
+	// Prepare the transaction; first setup some vars
+	CCoinControl coinControl;
+	coinControl.fAllowOtherInputs = true;
+	std::vector<std::pair<CScript, int64_t> > vecSend;
+	
+	// Next, we set the change address to the sender
+	coinControl.destChange = DecodeDestination(senderAddress);
 
-  //TODO verify datacarrier is enabled at startup, otherwise won't be able to send transactions
+	// Select the inputs
+	if (SelectCoins(senderAddress, coinControl, referenceAmount, minInputs) < 0) {
+		return MP_INPUTS_INVALID;
+	}
+	
+	// Encode the data outputs (out to vecSend);
+	if (!TradeLayer_Encode_ClassD(data, vecSend)) {
+		return MP_ENCODING_ERROR;
+	}
 
-  // Prepare the transaction - first setup some vars
-  CCoinControl coinControl;
-  coinControl.fAllowOtherInputs = true;
-  CWalletTx wtxNew;
-  std::vector<std::pair<CScript, int64_t> > vecSend;
-  CReserveKey reserveKey(pwalletMain);
+	// Then add a p2pkh output for the recipient (if needed). Note that we do
+	// this last as we want this to be the highest vout.
+    for (const auto& a : receiverAddresses)
+	{
+        if (a.empty()) continue;
 
-  // Next, we set the change address to the sender
-  coinControl.destChange = DecodeDestination(senderAddress);
+		CScript scriptPubKey = GetScriptForDestination(DecodeDestination(a));
 
-  CAmount nFeeRequired{GetMinimumFee(1000, coinControl, mempool, ::feeEstimator, nullptr)};
+		auto amount = referenceAmount;
+		if (amount < 0) {
+			amount = TLGetDust(scriptPubKey);
+		}
 
-  // Amount required for outputs
-  CAmount outputAmount{0};
+		vecSend.push_back(std::make_pair(scriptPubKey, amount));
+	}
 
-  // Encode the data outputs
-  if(!TradeLayer_Encode_ClassD(data,vecSend)) { return MP_ENCODING_ERROR; }
+	// Now we have what we need to pass to the wallet to create the transaction,
+	// perform some checks first.
+	if (!coinControl.HasSelected()) {
+		return MP_ERR_INPUTSELECT_FAIL;
+	}
 
-  // Then add a paytopubkeyhash output for the recipient (if needed) - note we do this last as we want this to be the highest vout
-  for (const auto& addr : receiverAddress)
-  {
-    CScript scriptPubKey = GetScriptForDestination(DecodeDestination(addr));
-    CAmount ramount = 0 < referenceAmount ? referenceAmount : GetDustThld(scriptPubKey);
-    outputAmount += ramount;
-    vecSend.push_back(std::make_pair(scriptPubKey, ramount));
-  }
+	// Convert the vector of recipients to something that the create transaction call will understand.
+	std::vector<CRecipient> vecRecipients;
+	for (auto& item : vecSend)
+	{
+		CRecipient recipient = { item.first, CAmount(item.second), false };
+		vecRecipients.push_back(recipient);
+	}
 
-  std::vector<CRecipient> vecRecipients;
-  for (size_t i = 0; i < vecSend.size(); ++i)
-  {
-     const std::pair<CScript, int64_t>& vec = vecSend[i];
-     CRecipient recipient = {vec.first, CAmount(vec.second), false};
-     vecRecipients.push_back(recipient);
-  }
+	CAmount nFeeRequired = GetMinimumFee(*pwalletMain, 1000, coinControl, nullptr);
+	int nChangePosRet = -1;
+	std::string strFailReason;
+	CTransactionRef tx;
+	bool fSign = true;
 
-  CAmount nFeeRet{0};
-  int nChangePosInOut = -1;
-  std::string strFailReason;
+	// Wallet comments
+	mapValue_t mapValue;
 
-  // Select the inputs
-  if (0 > SelectCoins(senderAddress, coinControl, outputAmount + nFeeRequired, minInputs)) { return MP_INPUTS_INVALID; }
+	bool fCreated = pwalletMain->CreateTransaction(*locked_chain, vecRecipients, tx, nFeeRequired, nChangePosRet, strFailReason, coinControl, fSign);
+	if (!fCreated) {
+		return MP_ERR_CREATE_TX;
+	}
 
-  // Now we have what we need to pass to the wallet to create the transaction, perform some checks first
-  if (!coinControl.HasSelected()) return MP_ERR_INPUTSELECT_FAIL;
-
-  // Ask the wallet to create the transaction (note mining fee determined by Litecoin Core params)
-  if (!pwalletMain->CreateTransaction(vecRecipients, wtxNew, reserveKey, nFeeRet, nChangePosInOut, strFailReason, coinControl, true))
-  {
-      return MP_ERR_CREATE_TX;
-  }
-
-  // If this request is only to create, but not commit the transaction then display it and exit
-  if (!commit) {
-      rawHex = EncodeHexTx(*(wtxNew.tx));
-      return 0;
-  } else {
-      // Commit the transaction to the wallet and broadcast)
-      CValidationState state;
-      if (!pwalletMain->CommitTransaction(wtxNew, reserveKey, g_connman.get(), state)) return MP_ERR_COMMIT_TX;
-      txid = wtxNew.GetHash();
-      return 0;
-  }
-#else
-  return MP_ERR_WALLET_ACCESS;
+	// If this request is only to create, but not to commit the transaction,
+	// then display it and return.
+	if (!commit) {
+		rawHex = EncodeHexTx(*tx);
+		return 0;
+	} else {
+		// Commit the transaction to the wallet and broadcast.
+		pwalletMain->CommitTransaction(tx, std::move(mapValue), {} /* orderForm */);
+		txid = tx->GetHash();
+		return 0;
+	}
 #endif
 
+	/**
+	 * Situation: We don't have access to the wallet.
+	 */
+
+	return MP_ERR_WALLET_ACCESS;
 }
 
 void CtlTransactionDB::RecordTransaction(const uint256& txid, uint32_t posInBlock)
@@ -4391,7 +4425,7 @@ void CMPTxList::LoadAlerts(int blockHeight)
      int64_t blockTime = 0;
      {
          LOCK(cs_main);
-         CBlockIndex* pBlockIndex = chainActive[blockHeight-1];
+         CBlockIndex* pBlockIndex = ChainActive()[blockHeight-1];
          if (pBlockIndex != nullptr) {
              blockTime = pBlockIndex->GetBlockTime();
          }
@@ -4931,7 +4965,7 @@ int mastercore_handler_block_end(int nBlockNow, CBlockIndex const * pBlockIndex,
        if (nBlockNow > params.MSC_NODE_REWARD_BLOCK)
        {
            // last blockhash
-           const CBlockIndex* pblockindex = chainActive[nBlockNow - 1];
+           const CBlockIndex* pblockindex = ChainActive()[nBlockNow - 1];
            const std::string& blockhash = pblockindex->GetBlockHash().GetHex();
            PrintToLog("%s(): blockhash of last block: %s\n",__func__, blockhash);
            nR.sendNodeReward(blockhash, nBlockNow, RegTest());

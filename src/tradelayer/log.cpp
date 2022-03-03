@@ -34,11 +34,11 @@ bool msc_debug_exo                              = 0;
 bool msc_debug_tally                            = 0;
 bool msc_debug_sp                               = 0;
 bool msc_debug_txdb                             = 0;
-bool msc_debug_persistence                      = 1;
+bool msc_debug_persistence                      = 0;
 bool msc_debug_ui                               = 0;
 bool msc_debug_pending                          = 0;
 bool msc_debug_packets                          = 0;
-bool msc_debug_packets_readonly                 = 1;
+bool msc_debug_packets_readonly                 = 0;
 bool msc_debug_walletcache                      = 0;
 bool msc_debug_consensus_hash                   = 0;
 bool msc_debug_consensus_hash_every_block       = 0;
@@ -52,15 +52,15 @@ bool msc_debug_margin_main                      = 0;
 bool msc_debug_pos_margin                       = 0;
 bool msc_debug_contract_inst_fee                = 0;
 bool msc_debug_instant_x_trade                  = 0;
-bool msc_debug_x_trade_bidirectional            = 0;
-bool msc_debug_contractdex_fees                 = 0;
+bool msc_debug_x_trade_bidirectional            = 1;
+bool msc_debug_contractdex_fees                 = 1;
 bool msc_debug_metadex_fees                     = 0;
 bool msc_debug_metadex1                         = 0;
 bool msc_debug_metadex2                         = 0;
 bool msc_debug_metadex3                         = 0;
 bool msc_debug_metadex_add                      = 0;
 bool msc_debug_contractdex_add                  = 0;
-bool msc_debug_contract_add_market              = 0;
+bool msc_debug_contract_add_market              = 1;
 bool msc_debug_contract_cancel_every            = 0;
 bool msc_debug_contract_cancel_forblock         = 0;
 bool msc_debug_contract_cancel_inorder          = 0;
@@ -89,7 +89,7 @@ bool msc_debug_send_reward                      = 0;
 bool msc_debug_contract_cancel                  = 0;
 bool msc_debug_fee_cache_buy                    = 0;
 bool msc_debug_check_attestation_reg            = 0;
-bool msc_debug_sanity_checks                    = 1;
+bool msc_debug_sanity_checks                    = 0;
 bool msc_debug_ltc_volume                       = 0;
 bool msc_debug_mdex_volume                      = 0;
 bool msc_debug_update_status                    = 0;
@@ -104,7 +104,7 @@ bool msc_tx_valid_node_reward                   = 0;
 bool msc_debug_delete_att_register              = 0;
 bool msc_debug_get_upn_info                     = 0;
 bool msc_debug_get_total_lives                  = 0;
-bool msc_debug_activate_feature                 = 1;
+bool msc_debug_activate_feature                 = 0;
 bool msc_debug_deactivate_feature               = 0;
 bool msc_debug_is_transaction_type_allowed      = 0;
 bool msc_debug_instant_payment                  = 1;
@@ -116,7 +116,7 @@ bool msc_debug_withdrawal_from_channel          = 0;
 bool msc_debug_populate_rpc_transaction_obj     = 0;
 bool msc_debug_fill_tx_input_cache              = 0;
 bool msc_debug_try_add_second                   = 0;
-bool msc_debug_liquidation_enginee              = 0;
+bool msc_debug_liquidation_enginee              = 1;
 
 /**
  * LogPrintf() has been broken a couple of times now
@@ -152,7 +152,7 @@ static fs::path GetLogPath()
 
     if (!strLogPath.empty()) {
         pathLogFile = fs::path(strLogPath);
-        TryCreateDirectory(pathLogFile.parent_path());
+        TryCreateDirectories(pathLogFile.parent_path());
     } else {
         pathLogFile = GetDataDir() / LOG_FILENAME;
     }
@@ -203,7 +203,7 @@ static void DebugLogInit()
 int LogFilePrint(const std::string& str)
 {
     int ret = 0; // Number of characters written
-    if (fPrintToConsole) {
+    if (LogInstance().m_print_to_console) {
         // Print to console
         ret = ConsolePrint(str);
 
@@ -229,7 +229,7 @@ int LogFilePrint(const std::string& str)
          }
 
          // Printing log timestamps can be useful for profiling
-         if (fLogTimestamps && fStartedNewLine) {
+         if (LogInstance().m_log_timestamps && fStartedNewLine) {
            ret += fprintf(fileout, "%s ", GetTimestamp().c_str());
          }
 
@@ -256,6 +256,7 @@ int ConsolePrint(const std::string& str)
 {
     int ret = 0; // Number of characters written
     static bool fStartedNewLine = true;
+    static bool fLogTimestamps = LogInstance().m_log_timestamps;
 
     if (fLogTimestamps && fStartedNewLine) {
         ret = fprintf(stdout, "%s %s", GetTimestamp().c_str(), str.c_str());

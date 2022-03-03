@@ -169,7 +169,7 @@ uint32_t CDInfo::putCD(const Entry& info)
 
     // DB value for property entry
     CDataStream ssSpValue(SER_DISK, CLIENT_VERSION);
-    ssSpValue.reserve(GetSerializeSize(info, ssSpValue.GetType(), ssSpValue.GetVersion()));
+    ssSpValue.reserve(GetSerializeSize(info, ssSpValue.GetVersion()));
     ssSpValue << info;
     leveldb::Slice slSpValue(&ssSpValue[0], ssSpValue.size());
 
@@ -180,7 +180,7 @@ uint32_t CDInfo::putCD(const Entry& info)
 
     // DB value for identifier
     CDataStream ssTxValue(SER_DISK, CLIENT_VERSION);
-    ssTxValue.reserve(GetSerializeSize(contractId, ssSpValue.GetType(), ssSpValue.GetVersion()));
+    ssTxValue.reserve(GetSerializeSize(contractId, ssSpValue.GetVersion()));
     ssTxValue << contractId;
     leveldb::Slice slTxValue(&ssTxValue[0], ssTxValue.size());
 

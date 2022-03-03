@@ -662,7 +662,7 @@ BOOST_AUTO_TEST_CASE(channel_persistence)
 
     // Testing write function
     write_mp_active_channels(lineOut);
-    BOOST_CHECK_EQUAL("Qdj12J6FZgaY34ZNx12pVpTeF9NQdmpGzj,Qdj12J6FZgaY34ZNx12pVpTeF9NQdmpGzj,mxAsoWQqUupprkj9L3firQ3CmUwyVCAwwY,muY24px8kWVHUDc8NmBRjL6UWGbjz8wW5r,1458,200+mxAsoWQqUupprkj9L3firQ3CmUwyVCAwwY-3:1000;mxAsoWQqUupprkj9L3firQ3CmUwyVCAwwY-7:2563", lineOut);
+    BOOST_CHECK_EQUAL("Qdj12J6FZgaY34ZNx12pVpTeF9NQdmpGzj,Qdj12J6FZgaY34ZNx12pVpTeF9NQdmpGzj,mxAsoWQqUupprkj9L3firQ3CmUwyVCAwwY,muY24px8kWVHUDc8NmBRjL6UWGbjz8wW5r,200+mxAsoWQqUupprkj9L3firQ3CmUwyVCAwwY-3:1000;mxAsoWQqUupprkj9L3firQ3CmUwyVCAwwY-7:2563", lineOut);
 
     // Cleaning map
     channels_Map.clear();
@@ -710,13 +710,13 @@ BOOST_AUTO_TEST_CASE(balance_persistence)
 
     // Testing write function
     write_msc_balances(lineOut);
-    BOOST_CHECK_EQUAL("muY24px8kWVHUDc8NmBRjL6UWGbjz8wW5r=1:10000,0,0,0,0,0,0,0,0,0,0,0;2:0,20000,0,0,0,0,0,0,0,0,0,0;",lineOut);
+    BOOST_CHECK_EQUAL("muY24px8kWVHUDc8NmBRjL6UWGbjz8wW5r=1:10000,0,0,0,0,0,0;2:0,20000,0,0,0,0,0;",lineOut);
 
     BOOST_CHECK(update_tally_map(address, 3, 30000, ACCEPT_RESERVE));
     BOOST_CHECK(update_tally_map(address, 4, 40000, METADEX_RESERVE));
 
     write_msc_balances(lineOut);
-    BOOST_CHECK_EQUAL("muY24px8kWVHUDc8NmBRjL6UWGbjz8wW5r=1:10000,0,0,0,0,0,0,0,0,0,0,0;2:0,20000,0,0,0,0,0,0,0,0,0,0;3:0,0,30000,0,0,0,0,0,0,0,0,0;4:0,0,0,40000,0,0,0,0,0,0,0,0;",lineOut);
+    BOOST_CHECK_EQUAL("muY24px8kWVHUDc8NmBRjL6UWGbjz8wW5r=1:10000,0,0,0,0,0,0;2:0,20000,0,0,0,0,0;3:0,0,30000,0,0,0,0;4:0,0,0,0,40000,0,0;",lineOut);
 
     // cleaning tally
     mp_tally_map.clear();

@@ -57,24 +57,24 @@ void WalletTXIDCacheInit()
     if (msc_debug_walletcache) PrintToLog("WALLETTXIDCACHE: WalletTXIDCacheInit requested\n");
 #ifdef ENABLE_WALLET
     CWalletRef pwalletMain = nullptr;
-    if (vpwallets.size() > 0){
-        pwalletMain = vpwallets[0];
-    }
+	const auto& ww = GetWallets();
+    if (!ww.empty()) {
+        pwalletMain = ww[0].get();
 
-    LOCK2(cs_tally, pwalletMain->cs_wallet);
+        LOCK2(cs_tally, pwalletMain->cs_wallet);
 
-    std::list<CAccountingEntry> acentries;
-    CWallet::TxItems txOrdered = pwalletMain->wtxOrdered;
+        CWallet::TxItems txOrdered = pwalletMain->wtxOrdered;
 
-    // Iterate through the wallet, checking if each transaction is Trade Layer (via levelDB)
-    for (CWallet::TxItems::reverse_iterator it = txOrdered.rbegin(); it != txOrdered.rend(); ++it) {
-        const CWalletTx* pwtx = it->second.first;
-        if (pwtx != nullptr) {
-            // get the hash of the transaction and check leveldb to see if this is an Trade Layer tx, if so add to cache
-            const uint256& hash = pwtx->GetHash();
-            if (p_txlistdb->exists(hash)) {
-                walletTXIDCache.push_back(hash);
-                if (msc_debug_walletcache) PrintToLog("WALLETTXIDCACHE: Adding tx to txid cache : %s\n", hash.GetHex());
+        // Iterate through the wallet, checking if each transaction is Trade Layer (via levelDB)
+        for (auto it = txOrdered.rbegin(); it != txOrdered.rend(); ++it) {
+            const CWalletTx* pwtx = it->second;
+            if (pwtx != nullptr) {
+                // get the hash of the transaction and check leveldb to see if this is an Trade Layer tx, if so add to cache
+                const uint256& hash = pwtx->GetHash();
+                if (p_txlistdb->exists(hash)) {
+                    walletTXIDCache.push_back(hash);
+                    if (msc_debug_walletcache) PrintToLog("WALLETTXIDCACHE: Adding tx to txid cache : %s\n", hash.GetHex());
+                }
             }
         }
     }

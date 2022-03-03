@@ -18,6 +18,7 @@
 #include <tradelayer/notifications.h>
 #include <tradelayer/parse_string.h>
 #include <tradelayer/register.h>
+#include <tradelayer/rpc.h>
 #include <tradelayer/rpcrequirements.h>
 #include <tradelayer/rpctx.h>
 #include <tradelayer/rpctxobject.h>
@@ -39,8 +40,9 @@
 #include <init.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
-#include <rpc/safemode.h>
+#include <rpc/protocol.h>
 #include <rpc/server.h>
+#include <rpc/util.h>
 #include <tinyformat.h>
 #include <txmempool.h>
 #include <uint256.h>
@@ -48,6 +50,7 @@
 #include <validation.h>
 #ifdef ENABLE_WALLET
 #include <wallet/wallet.h>
+#include <wallet/rpcwallet.h>
 #endif
 
 #include <iomanip>
@@ -526,13 +529,12 @@ UniValue mscrpc(const JSONRPCRequest& request)
         case 11:
         {
             PrintToLog("Locking pwalletMain->cs_wallet for %d milliseconds..\n", extra2);
-            CWalletRef pwalletMain = nullptr;
-            if (vpwallets.size() > 0){
-                pwalletMain = vpwallets[0];
+            const auto& ww = GetWallets();
+            if (!ww.empty()) {
+                LOCK(ww[0]->cs_wallet);
+                UninterruptibleSleep(std::chrono::milliseconds{extra2});
+                PrintToLog("Unlocking pwalletMain->cs_wallet now\n");
             }
-            LOCK(pwalletMain->cs_wallet);
-            UninterruptibleSleep(std::chrono::milliseconds{extra2});
-            PrintToLog("Unlocking pwalletMain->cs_wallet now\n");
             break;
         }
 #endif
@@ -636,12 +638,12 @@ UniValue tl_getbalance(const JSONRPCRequest& request)
 }
 
 // XXX imports for tl_getwalletbalance.
-extern UniValue listreceivedbyaddress(const JSONRPCRequest& request);
-extern UniValue tl_getallbalancesforaddress(const JSONRPCRequest& request);
+//extern UniValue listreceivedbyaddress(const JSONRPCRequest& request);
+//extern UniValue tl_getallbalancesforaddress(const JSONRPCRequest& request);
 UniValue tl_getwalletbalance(const JSONRPCRequest& request)
 {
-    CWallet * const pwallet = GetWalletForJSONRPCRequest(request);
-    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+    auto w  = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(w.get(), request.fHelp)) {
         return NullUniValue;
     }
 
@@ -1382,7 +1384,7 @@ UniValue tl_listblocktransactions(const JSONRPCRequest& request)
     CBlock block;
     {
         LOCK(cs_main);
-        CBlockIndex* pBlockIndex = chainActive[blockHeight];
+        CBlockIndex* pBlockIndex = ChainActive()[blockHeight];
 
         if (!ReadBlockFromDisk(block, pBlockIndex, Params().GetConsensus())) {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to read block from disk");
@@ -1763,7 +1765,7 @@ UniValue tl_getcurrentconsensushash(const JSONRPCRequest& request)
 
         int block = GetHeight();
 
-        CBlockIndex* pblockindex = chainActive[block];
+        CBlockIndex* pblockindex = ChainActive()[block];
         uint256 blockHash = pblockindex->GetBlockHash();
 
         uint256 consensusHash = GetConsensusHash();
@@ -2799,7 +2801,7 @@ UniValue tl_getalltxonblock(const JSONRPCRequest& request)
     CBlock block;
     {
         LOCK(cs_main);
-        CBlockIndex* pBlockIndex = chainActive[blockHeight];
+        CBlockIndex* pBlockIndex = ChainActive()[blockHeight];
 
         if (!ReadBlockFromDisk(block, pBlockIndex, Params().GetConsensus()))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Failed to read block from disk");
@@ -2810,7 +2812,7 @@ UniValue tl_getalltxonblock(const JSONRPCRequest& request)
 
     LOCK(cs_tally);
 
-    for(const auto tx : block.vtx)
+    for(const auto& tx : block.vtx)
     {
         if (p_txlistdb->exists(tx->GetHash()))
         {
@@ -3399,7 +3401,7 @@ UniValue tl_isaddresswinner(const JSONRPCRequest& request)
 
   if (request.params.size() == 1) {
       int block = GetHeight();
-      CBlockIndex* pblockindex = chainActive[block];
+      CBlockIndex* pblockindex = ChainActive()[block];
       blockHash = pblockindex->GetBlockHash().GetHex();
 
   } else {

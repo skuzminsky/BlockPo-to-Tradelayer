@@ -74,8 +74,9 @@ int64_t lgetVWap(uint32_t propertyId, int aBlock, const std::map<uint32_t,std::m
 
     if (volume == 0) BOOST_TEST_MESSAGE("volume here is 0");
 
-    // BOOST_TEST_MESSAGE("nvwap:" << ConvertTo64(nvwap));
-    // BOOST_TEST_MESSAGE("volume:" << volume);
+    //BOOST_TEST_MESSAGE("nvwap:" << ConvertTo64(nvwap));
+    //BOOST_TEST_MESSAGE("volume:" << volume);
+
     return ((volume > 0) ? (COIN *(ConvertTo64(nvwap) / volume)) : 0);
 
 }

@@ -10,6 +10,7 @@
 #include <script/script.h>
 #include <script/standard.h>
 #include <uint256.h>
+#include <key_io.h>
 
 #include <stdint.h>
 #include <string>
@@ -81,7 +82,7 @@ TxBuilder& TxBuilder::addChange(const CTxDestination& destination, const CCoinsV
     CScript scriptPubKey = GetScriptForDestination(destination);
 
     int64_t txChange = view.GetValueIn(tx) - tx.GetValueOut() - txFee;
-    int64_t minValue = GetDustThld(scriptPubKey);
+    int64_t minValue = TLGetDust(scriptPubKey);
 
     if (txChange < minValue) {
         return *this;
@@ -133,7 +134,7 @@ TLTxBuilder& TLTxBuilder::addReference(const std::string& destination, int64_t v
     CTxDestination address = DecodeDestination(destination);
     CScript scriptPubKey = GetScriptForDestination(address);
 
-    int64_t minValue = GetDustThld(scriptPubKey);
+    int64_t minValue = TLGetDust(scriptPubKey);
     value = std::max(minValue, value);
 
     return (TLTxBuilder&) TxBuilder::addOutput(scriptPubKey, value);

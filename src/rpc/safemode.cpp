@@ -1,6 +1,7 @@
 #include <rpc/safemode.h>
 
 #include <rpc/protocol.h>
+#include <rpc/util.h>
 #include <util/system.h>
 #include <warnings.h>
 

@@ -5,12 +5,10 @@
 #include <fs.h>
 
 #ifndef WIN32
-#include <cstring>
 #include <fcntl.h>
 #include <string>
 #include <sys/file.h>
 #include <sys/utsname.h>
-#include <unistd.h>
 #else
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -31,21 +29,9 @@ FILE *fopen(const fs::path& p, const char *mode)
 #endif
 }
 
-FILE *freopen(const fs::path& p, const char *mode, FILE *stream)
-{
-#ifndef WIN32
-    return ::freopen(p.string().c_str(), mode, stream);
-#else
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>,wchar_t> utf8_cvt;
-    return ::_wfreopen(p.wstring().c_str(), utf8_cvt.from_bytes(mode).c_str(), stream);
-#endif
-}
-
-
 #ifndef WIN32
 
-static std::string GetErrorReason()
-{
+static std::string GetErrorReason() {
     return std::strerror(errno);
 }
 

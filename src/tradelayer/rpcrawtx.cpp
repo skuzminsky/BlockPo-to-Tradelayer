@@ -10,6 +10,7 @@
 #include <primitives/transaction.h>
 #include <pubkey.h>
 #include <rpc/server.h>
+#include <rpc/util.h>
 #include <sync.h>
 #include <uint256.h>
 #include <util/strencodings.h>
@@ -21,7 +22,7 @@
 #include <stdint.h>
 #include <string>
 
-extern CCriticalSection cs_main;
+extern RecursiveMutex cs_main;
 
 
 using mastercore::cs_tx_cache;

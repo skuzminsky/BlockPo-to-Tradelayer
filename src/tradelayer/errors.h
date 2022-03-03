@@ -86,9 +86,6 @@ inline std::string error_str(int ec) {
     case MP_ERR_PAYLOAD_TOO_BIG:
       ec_str = "Payload too large";
       break;
-    case MP_RPC_DECODE_INPUTS_MISSING:
-      ec_str = "Missing Inputs";
-      break;
     case PKT_ERROR -1:
       ec_str = "Attempt to execute logic in RPC mode";
       break;
@@ -130,9 +127,6 @@ inline std::string error_str(int ec) {
       break;
     case PKT_ERROR_SEND -26:
       ec_str = "Sender sending tokens to himself";
-      break;
-    case PKT_ERROR_SEND_DONATION - 21:
-      ec_str = "Sender with insufficient balance of property";
       break;
     case PKT_ERROR_SEND_ALL -22:
       ec_str = "Transaction type or version not permitted";
@@ -366,8 +360,8 @@ inline std::string error_str(int ec) {
       ec_str = "Unable to close channel";
       break;
 
-    case NODE_REWARD_ERROR -1:
-      ec_str = "Address not found";
+    case CONTRACTDEX_ERROR -1:
+      ec_str = "Bad leverage for the order";
       break;
 
     default:
