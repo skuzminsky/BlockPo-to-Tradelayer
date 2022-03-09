@@ -1070,8 +1070,10 @@ bool AcceptToMemoryPool(CTxMemPool& pool, TxValidationState &state, const CTrans
  * Return transaction in txOut, and if it was found inside a block, its hash is placed in hashBlock.
  * If blockIndex is provided, the transaction is fetched from the corresponding block.
  */
-bool GetTransaction(const uint256& hash, CTransactionRef& txOut, const Consensus::Params& consensusParams, uint256& hashBlock, const CBlockIndex* const block_index)
+bool GetTransaction(const uint256& hash, CTransactionRef& txOut, const Consensus::Params& consensusParams, uint256& hashBlock, bool fAllowSlow, CBlockIndex* block_index)
 {
+    CBlockIndex* pindexSlow = block_index;
+
     LOCK(cs_main);
 
     if (!block_index) {
@@ -1097,52 +1099,10 @@ bool GetTransaction(const uint256& hash, CTransactionRef& txOut, const Consensus
         }
     }
 
-    return false;
-}
-
-bool GetTransaction(const uint256& hash, CTransactionRef& txOut, const Consensus::Params& consensusParams, uint256& hashBlock, bool fAllowSlow, CBlockIndex* blockIndex)
-{
-    CBlockIndex* pindexSlow = blockIndex;
-
-    LOCK(cs_main);
-
-    if (!blockIndex) {
-        CTransactionRef ptx = mempool.get(hash);
-        if (ptx) {
-            txOut = ptx;
-            return true;
-        }
+    if (fAllowSlow) { // use coin database to locate block that contains transaction, and scan it
+        const Coin& coin = AccessByTxid(::ChainstateActive().CoinsTip(), hash);
+        if (!coin.IsSpent()) pindexSlow = ::ChainActive()[coin.nHeight];
     }
-    
-    //     if (fTxIndex) {
-    //         CDiskTxPos postx;
-    //         if (pblocktree->ReadTxIndex(hash, postx)) {
-    //             CAutoFile file(OpenBlockFile(postx, true), SER_DISK, CLIENT_VERSION);
-    //             if (file.IsNull())
-    //                 return error("%s: OpenBlockFile failed", __func__);
-    //             CBlockHeader header;
-    //             try {
-    //                 file >> header;
-    //                 fseek(file.Get(), postx.nTxOffset, SEEK_CUR);
-    //                 file >> txOut;
-    //             } catch (const std::exception& e) {
-    //                 return error("%s: Deserialize or I/O error - %s", __func__, e.what());
-    //             }
-    //             hashBlock = header.GetHash();
-    //             if (txOut->GetHash() != hash)
-    //                 return error("%s: txid mismatch", __func__);
-    //             return true;
-    //         }
-
-    //         // transaction not found in index, nothing more can be done
-    //         return false;
-    //     }
-
-    //     if (fAllowSlow) { // use coin database to locate block that contains transaction, and scan it
-    //         const Coin& coin = AccessByTxid(*pcoinsTip, hash);
-    //         if (!coin.IsSpent()) pindexSlow = chainActive[coin.nHeight];
-    //     }
-    // }
 
     if (pindexSlow) {
         CBlock block;
