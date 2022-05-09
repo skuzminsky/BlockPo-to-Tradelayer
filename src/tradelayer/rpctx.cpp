@@ -1349,7 +1349,6 @@ UniValue tl_redemption_pegged(const JSONRPCRequest& request)
   const std::string fromAddress = ParseAddress(request.params[0]);
   const uint32_t propertyId = ParsePropertyId(request.params[1]);
   uint32_t contractId = ParseNameOrId(request.params[3]);
-
   uint64_t amount = ParseAmount(request.params[2], true);
 
   // perform checks
