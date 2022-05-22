@@ -3885,6 +3885,86 @@ UniValue tl_getsocializations(const JSONRPCRequest& request)
     return balanceObj;
 }
 
+UniValue tl_vwap_volatility(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
+        throw runtime_error(
+            "tl_vwap_volatility\n"
+
+            "\nReturns historical VWAP price change over period of 50 to 1000 blocks.\n"
+            
+            "\nArguments:\n"
+            "1. name or id                      (string, required) the name  of the native future contract, or the number id\n"
+
+            "\nResult:\n"
+            "  \"contractid\" : n,              (number) the identifier\n"
+			"  \"volatility\":                  historical VWAP price volatility\n"
+            "  [                                (array of JSON objects)\n"
+            "    {\n"
+            "        \"blocks\" : \"nn\",       (number) N last blocks\n"
+            "        \"change\" : \"nn\",       (number) percentage change of VWAP price over the last N blocks\n"
+            "    },\n"
+            "  ...\n"
+            "]\n"
+            "\nExamples:\n"
+            + HelpExampleCli("tl_vwap_volatility", "\"Contract 1\"")
+			+ HelpExampleRpc("tl_vwap_volatility", "\"Contract 1\""));
+        
+    uint32_t contractId = ParseNameOrId(request.params[0]);
+
+    CDInfo::Entry cd;
+    assert(_my_cds->getCD(contractId, cd));
+    if (!cd.isNative()) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Contract type must be native");
+    }
+
+    auto c = tokenvwap.find(contractId);
+    if (c == tokenvwap.end()) {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "No VWAP data data exists for contract: " + cd.name);
+    }
+
+    auto& block_prices = c->second;
+
+    using P64 = std::pair<int64_t, int64_t>;
+	std::map<int, P64> vm;
+	
+	for (size_t n : { 10,50,100,500,1000 })
+	{
+		if (block_prices.size() < n) {
+			break;
+        }
+
+		auto end = block_prices.end();
+		auto start = std::next(end, -n);
+		
+		std::set<int64_t> min;
+		std::set<int64_t> max;
+
+		while (start != end)
+		{
+			auto& p = start->second;
+			std::sort(p.begin(), p.end(), [](const P64& a, const P64& b) { return a.first < b.first; });
+			min.insert(p.begin()->first);
+			max.insert(std::prev(p.end())->first);
+			++start;
+		}
+
+		vm[n] = std::make_pair(*min.begin(), *std::prev(max.end()));
+	}
+
+    UniValue response(UniValue::VOBJ);
+    response.pushKV("contract", cd.name);
+    UniValue vwap(UniValue::VARR);
+    for (auto v : vm) {
+        UniValue a(UniValue::VOBJ);
+        a.pushKV("blocks", v.first);
+        a.pushKV("change", round((v.second.first/(float)v.second.second)*100));
+        vwap.push_back(a);
+    }
+    response.pushKV("volatility", vwap);
+    return response;
+}
+
 static const CRPCCommand commands[] =
 { //  category                             name                            actor (function)               okSafeMode
   //  ------------------------------------ ------------------------------- ------------------------------ ----------
@@ -3955,7 +4035,9 @@ static const CRPCCommand commands[] =
   {"trade layer (data retrieval)",   "tl_listnodereward_addresses",             &tl_listnodereward_addresses,          {} },
   {"trade layer (data retrieval)",   "tl_getnextreward",                        &tl_getnextreward,                     {} },
   { "trade layer (data retrieval)", "tl_isaddresswinner",                       &tl_isaddresswinner,                   {} },
-  { "trade layer (data retrieval)" , "tl_getlast_winners",                      &tl_getlast_winners,                   {} }
+  { "trade layer (data retrieval)" , "tl_getlast_winners",                      &tl_getlast_winners,                   {} },
+
+  { "trade layer (data retrieval)" , "tl_vwap_volatility",                      &tl_vwap_volatility,                   {} }
 };
 
 void RegisterTLDataRetrievalRPCCommands(CRPCTable &tableRPC)
