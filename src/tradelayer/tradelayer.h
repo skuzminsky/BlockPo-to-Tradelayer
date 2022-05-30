@@ -383,7 +383,7 @@ class Channel
    void setBalance(const std::string& sender, uint32_t propertyId, uint64_t amount);
    void setSecond(const std::string& sender) { second = sender ; }
    bool updateChannelBal(const std::string& address, uint32_t propertyId, int64_t amount);
-   bool updateLastExBlock(int nBlock);
+   //bool updateLastExBlock(int nBlock);
 
  };
 

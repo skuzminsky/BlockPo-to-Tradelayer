@@ -33,6 +33,7 @@
 #include <tradelayer/varint.h>
 #include <tradelayer/version.h>
 #include <tradelayer/wallettxs.h>
+#include <tradelayer/vwapsamples.h>
 
 #include <amount.h>
 #include <arith_uint256.h>
@@ -3912,9 +3913,14 @@ UniValue tl_vwap_volatility(const JSONRPCRequest& request)
             + HelpExampleRpc("tl_vwap_volatility", "\"Contract 1\""));
 
     uint32_t contractId = ParseNameOrId(request.params[0]);
-
+    
     CDInfo::Entry cd;
-    assert(_my_cds->getCD(contractId, cd));
+    if (!_my_cds->getCD(contractId, cd)) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Contract identifier does not exist");
+    }
+
+    assert(cd.isNative());
+
     if (!cd.isNative()) {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Contract type must be native");
     }
@@ -3924,42 +3930,16 @@ UniValue tl_vwap_volatility(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "No VWAP data data exists for contract: " + cd.name);
     }
 
-    auto& block_prices = c->second;
-
-    using P64 = std::pair<int64_t, int64_t>;
-    std::map<int, P64> vm;
-
-    for (size_t n : {10, 50, 100, 500, 1000}) 
-    {
-        if (block_prices.size() < n) {
-            break;
-        }
-
-        auto end = block_prices.end();
-        auto start = std::next(end, -n);
-
-        std::set<int64_t> min;
-        std::set<int64_t> max;
-
-        while (start != end) {
-            auto& p = start->second;
-            std::sort(p.begin(), p.end(), [](const P64& a, const P64& b) { return a.first < b.first; });
-            min.insert(p.begin()->first);
-            max.insert(std::prev(p.end())->first);
-            ++start;
-        }
-
-        vm[n] = std::make_pair(*min.begin(), *std::prev(max.end()));
-    }
+    auto vmmap = tl::get_vwap2(c->second, {10, 50, 100, 500, 1000}); 
 
     UniValue response(UniValue::VOBJ);
     response.pushKV("contract", cd.name);
     UniValue vwap(UniValue::VARR);
-    for (auto v : vm) {
-        UniValue a(UniValue::VOBJ);
-        a.pushKV("blocks", v.first);
-        a.pushKV("change", round((v.second.first / (float)v.second.second) * 100));
-        vwap.push_back(a);
+    for (auto v : vmmap) {
+        UniValue u(UniValue::VOBJ);
+        u.pushKV("blocks", v.first);
+        u.pushKV("change", round((v.second.first / (float)v.second.second) * 100));
+        vwap.push_back(u);
     }
     response.pushKV("volatility", vwap);
     return response;
