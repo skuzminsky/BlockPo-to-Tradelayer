@@ -3930,7 +3930,7 @@ UniValue tl_vwap_volatility(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "No VWAP data data exists for contract: " + cd.name);
     }
 
-    auto vmmap = tl::get_vwap2(c->second, {10, 50, 100, 500, 1000}); 
+    auto vmmap = tl::GetVWAPSamples(c->second, {10, 50, 100, 500, 1000}); 
 
     UniValue response(UniValue::VOBJ);
     response.pushKV("contract", cd.name);

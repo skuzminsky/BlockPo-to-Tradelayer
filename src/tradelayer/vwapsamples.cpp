@@ -1,18 +1,46 @@
-#include <tradelayer/tradelayer.h>
 #include <tradelayer/vwapsamples.h>
+#include <tradelayer/tradelayer.h>
+#include <tradelayer/rpctxobject.h>
 
 namespace tl
 {
 
-std::vector<int64_t> get_vwap1(const std::map<std::string,Channel>& data, const std::string& address, uint32_t pid, int nBlocks)
+namespace mc = mastercore;
+
+bool FindChannelTrade(const Channels& data, const std::string& address, uint32_t pid, int nBlocks)
 {
+    // Build set of blocks for this trade 
+    std::set<int> blocks;
+    std::vector<uint256> txArray;
+    {
+        LOCK(cs_tally);
+        std ::string ch;
+        if (!mc::t_tradelistdb->checkChannelRelation(address, ch))
+        {
+            // hasn't traded in a channel
+            return false;
+        }
+        mc::t_tradelistdb->getTradesForAddress(address, txArray, pid);
+    }
+    for(auto tx : txArray) 
+    {
+        UniValue v(UniValue::VOBJ);
+        if (0 == populateRPCTransactionObject(tx, v))
+        {
+            blocks.emplace(v["block"].get_int());
+        }
+    }
+
+    // Assume no trade has been found
+    if (blocks.empty())
+    {
+        return false;
+    }
+
     // Sort channels by block
     std::vector<Channel> channels;
     std::for_each(data.begin(), data.end(), [&](const std::pair<std::string,Channel>& p) { channels.push_back(p.second); });
     std::sort(channels.begin(), channels.end(), [](const Channel& a, const Channel& b) { return a.getLastBlock() < b.getLastBlock(); });
-
-    std::vector<int64_t> vwap;
-    vwap.resize(nBlocks);
 
     int n = 0, b = 0;
     for (auto c = channels.rbegin(); c != channels.rend(); ++c) 
@@ -24,26 +52,23 @@ std::vector<int64_t> get_vwap1(const std::map<std::string,Channel>& data, const 
             ++n;
         }
 
-        // Lookup an asset at the address
-        if (c->isPartOfChannel(address)) 
+        if (!c->isPartOfChannel(address)) 
         {
-            auto& bmap = c->getBalanceMap();
-            
-            auto m1 = bmap.find(address);
-            if (m1 == bmap.end()) continue;
-            auto m2 = m1->second.find(pid);
-            if (m2 == m1->second.end()) continue;
-            
-            vwap.emplace_back(m2->second);
+            continue;
+        }
+                
+        if (blocks.find(b) != blocks.end())
+        {
+            return true;
         }
 
         if (n > nBlocks-1) break;
     }
 
-    return vwap;
+    return false;
 }
 
-std::map<int, P64> get_vwap2(const std::map<int, V64>& data, std::initializer_list<int> nBlocks)
+std::map<int, P64> GetVWAPSamples(const std::map<int, V64>& data, std::initializer_list<int> nBlocks)
 {
     std::map<int, P64> vwap;
 
@@ -76,9 +101,18 @@ std::map<int, P64> get_vwap2(const std::map<int, V64>& data, std::initializer_li
     return vwap;
 }
 
-int64_t get_vwap3()
+int64_t AntiWashFilter(const Channels& data, const std::string& address, uint32_t pid)
 {
     // RoundDown(WeighedAvg(Volatility_Samples)%0.005+1)
+
+    for (auto b : {10, 50, 100, 500, 1000})
+    {
+        if (!FindChannelTrade(data, address, pid, b))
+            continue;
+    }
+
+    //auto vmmap = tl::GetVWAPSamples(c->second, {10, 50, 100, 500, 1000}); 
+    
     return 0;
 }
 
