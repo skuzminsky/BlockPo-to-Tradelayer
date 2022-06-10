@@ -101,19 +101,77 @@ std::map<int, P64> GetVWAPSamples(const std::map<int, V64>& data, std::initializ
     return vwap;
 }
 
-int64_t AntiWashFilter(const Channels& data, const std::string& address, uint32_t pid)
+static std::map<int, P64> GetVWAPSamplesFiltered(const std::map<int, V64>& data, const std::string& address, uint32_t pid, std::initializer_list<int> nBlocks, std::function<bool(int n)> pred)
 {
-    // RoundDown(WeighedAvg(Volatility_Samples)%0.005+1)
+    std::map<int, P64> vwap;
 
-    for (auto b : {10, 50, 100, 500, 1000})
+    for (size_t n : nBlocks) 
     {
-        if (!FindChannelTrade(data, address, pid, b))
-            continue;
-    }
+        if (data.size() < n) {
+            break;
+        }
 
-    //auto vmmap = tl::GetVWAPSamples(c->second, {10, 50, 100, 500, 1000}); 
+        if (pred(n))
+        {
+            continue;
+        }
+
+        std::set<int64_t> set1;
+        std::set<int64_t> set2;
+
+        for (auto end=data.cend(), start=std::next(end,-n); start!=end; std::next(start)) 
+        {
+            auto& v64 = const_cast<V64&>(start->second);
+            if (v64.size()) 
+            {
+                std::sort(v64.begin(), v64.end(), [](const P64& a, const P64& b) { return a.first < b.first; });
+                set1.insert(v64.cbegin()->first);
+                set2.insert(std::prev(v64.cend())->first);
+            }
+        }
+
+        auto mn = set1.size() ? *set1.begin() : 0L;
+        auto mx = set2.size() ? *std::prev(set2.end()) : 0L;
+
+        vwap[n] = std::make_pair(mn, mx);
+    }
     
+    return vwap;
+}
+
+static inline float GetBlockVolatility(const std::map<int, tl::P64>& data, int block)
+{
+    auto p = data.find(block);
+    if (p != data.end())
+    {
+        auto pv = p->second;
+        return pv.first / pv.second;       
+    }
     return 0;
+}
+
+int64_t AntiWashFilter(const Channels& channels, const std::string& address, uint32_t pid)
+{
+    // TODO: !!!
+    std::map<int, V64> __tokenvwap__; // TODO: meant to be from contract id (as before) ???
+    // TODO: !!!
+
+    auto blocks = { 10, 50, 100, 500, 1000 };
+    auto channelFilter = [&](int n){ return FindChannelTrade(channels, address, pid, n); };
+    
+    auto vwapFilter = GetVWAPSamplesFiltered(__tokenvwap__, address, pid, blocks, channelFilter);
+
+    auto v10 = GetBlockVolatility(vwapFilter, 10);
+    auto v50 = GetBlockVolatility(vwapFilter, 50);
+    auto v100 = GetBlockVolatility(vwapFilter, 100);
+    auto v500 = GetBlockVolatility(vwapFilter, 500);
+    auto v1000 = GetBlockVolatility(vwapFilter, 1000);
+
+    // RoundDown(WeighedAvg(Volatility_Samples)%0.005+1)
+    int weighedAvg = std::min(((v50+v10)/2), (v100+v500+v1000)/3);
+
+    // (50 % + 1) ???
+    return std::round(weighedAvg / 2 + 1);
 }
 
 } // namespace tl
