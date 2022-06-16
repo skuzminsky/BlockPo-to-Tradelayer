@@ -21,7 +21,7 @@ namespace tl
     std::map<int, P64> GetVWAPSamples(const std::map<int, V64>& data, std::initializer_list<int> nBlocks);
 
     // Anti wash filter
-    int64_t AntiWashFilter(const Channels& data, const std::string& address, uint32_t pid);
+    std::map<int, P64> AntiWashFilter(const std::map<int, V64>& data, const Channels& channels, const std::string& address, uint32_t pid);
 }
 
 #endif // TL_VWAPSAMPLES_H

@@ -150,28 +150,9 @@ static inline float GetBlockVolatility(const std::map<int, tl::P64>& data, int b
     return 0;
 }
 
-int64_t AntiWashFilter(const Channels& channels, const std::string& address, uint32_t pid)
+std::map<int, P64> GetAntiWashSamples(const std::map<int, V64>& data, const Channels& channels, const std::string& address, uint32_t pid, std::initializer_list<int> nBlocks)
 {
-    // TODO: !!!
-    std::map<int, V64> __tokenvwap__; // TODO: meant to be from contract id (as before) ???
-    // TODO: !!!
-
-    auto blocks = { 10, 50, 100, 500, 1000 };
-    auto channelFilter = [&](int n){ return FindChannelTrade(channels, address, pid, n); };
-    
-    auto vwapFilter = GetVWAPSamplesFiltered(__tokenvwap__, address, pid, blocks, channelFilter);
-
-    auto v10 = GetBlockVolatility(vwapFilter, 10);
-    auto v50 = GetBlockVolatility(vwapFilter, 50);
-    auto v100 = GetBlockVolatility(vwapFilter, 100);
-    auto v500 = GetBlockVolatility(vwapFilter, 500);
-    auto v1000 = GetBlockVolatility(vwapFilter, 1000);
-
-    // RoundDown(WeighedAvg(Volatility_Samples)%0.005+1)
-    int weighedAvg = std::min(((v50+v10)/2), (v100+v500+v1000)/3);
-
-    // (50 % + 1) ???
-    return std::round(weighedAvg / 2 + 1);
+    return GetVWAPSamplesFiltered(data, address, pid, nBlocks, [&](int n){ return FindChannelTrade(channels, address, pid, n); });
 }
 
 } // namespace tl
