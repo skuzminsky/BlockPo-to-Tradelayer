@@ -1681,7 +1681,7 @@ static int input_mp_token_ltc_string(const std::string& s)
 
 static int input_cachefees_string(const std::string& s)
 {
-    auto t = NC::Parse<uint32_t,int64_t,int64_t,int64_t>(s);
+    auto t = tl::NC::Parse<uint32_t,int64_t,int64_t,int64_t>(s);
     
     // format:{pid:native,oracle,spot}
     auto key= std::get<0>(t);

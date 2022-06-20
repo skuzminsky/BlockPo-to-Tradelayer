@@ -9,10 +9,24 @@
 #include <boost/lexical_cast/try_lexical_convert.hpp>
 #include <boost/throw_exception.hpp>
 
-inline std::vector<std::string> split_string(const std::string& s, const std::string& separator = ";,")
+namespace tl
+{
+
+inline std::vector<int> split_string(const std::string &s, char delimiter = ',') 
+{     
+    std::vector<int> tokens;     
+    std::string token;     
+    std::istringstream iss(s);     
+    while (std::getline(iss, token, delimiter)) {      
+        tokens.push_back(stoi(token));     
+    }     
+    return tokens;  
+}
+
+inline std::vector<std::string> split_string(const std::string& s, const std::string& delimiter = ";,")
 {
     std::vector<std::string> ss;
-    boost::split(ss, s, boost::is_any_of(separator), boost::algorithm::token_compress_on);
+    boost::split(ss, s, boost::is_any_of(delimiter), boost::algorithm::token_compress_on);
     return ss;
 }
 
@@ -153,5 +167,7 @@ public:
 // Numeric Convertor: NC::Parse<bool,int64_t>("1;65536");
 using NC = Convertor<BadCastPolicy, NumericTraits>;
 using LC = Convertor<BadCastPolicy, LexicalTraits>;
+
+}
 
 #endif // TUPLE_UTILS_HPP

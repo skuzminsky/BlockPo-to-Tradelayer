@@ -4,6 +4,8 @@
 
 BOOST_FIXTURE_TEST_SUITE(tradelayer_tuple_tests, BasicTestingSetup)
 
+using namespace tl;
+
 // *boost::unit_test::tolerance(0.0001)
 BOOST_AUTO_TEST_CASE(mighty_tuple)
 {

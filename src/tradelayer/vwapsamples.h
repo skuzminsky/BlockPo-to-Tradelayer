@@ -14,14 +14,11 @@ namespace tl
     using P64 = std::pair<int64_t, int64_t>;
     using V64 = std::vector<P64>;
 
-    // Establish if there was a channel trade at the address specified within last N blocks
-    bool FindChannelTrade(const Channels& data, const std::string& address, uint32_t pid, int nBlocks);
-
     // Get VWAP samples
-    std::map<int, P64> GetVWAPSamples(const std::map<int, V64>& data, std::initializer_list<int> nBlocks);
+    std::map<int, P64> GetVWAPSamples(const std::map<int, V64>& data, const std::vector<int>& nBlocks);
 
     // Anti wash filter
-    std::map<int, P64> AntiWashFilter(const std::map<int, V64>& data, const Channels& channels, const std::string& address, uint32_t pid);
+    std::map<int, P64> GetAntiWashSamples(const std::map<int, V64>& data, const Channels& channels, const std::string& address, uint32_t pid, const std::vector<int>& nBlocks);
 }
 
 #endif // TL_VWAPSAMPLES_H

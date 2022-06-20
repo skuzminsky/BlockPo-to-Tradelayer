@@ -34,6 +34,7 @@
 #include <tradelayer/version.h>
 #include <tradelayer/wallettxs.h>
 #include <tradelayer/vwapsamples.h>
+#include <tradelayer/tupleutils.hpp>
 
 #include <amount.h>
 #include <arith_uint256.h>
@@ -3888,14 +3889,15 @@ UniValue tl_getsocializations(const JSONRPCRequest& request)
 
 UniValue tl_vwap_volatility(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
+    if (request.fHelp || request.params.size() != 2)
         throw runtime_error(
             "tl_vwap_volatility\n"
 
-            "\nReturns historical VWAP price change over period of 50 to 1000 blocks.\n"
+            "\nReturns historical VWAP price change over period of blocks (e.g. 10,50,100,50,1000).\n"
 
             "\nArguments:\n"
             "1. name or id                      (string, required) the name  of the native future contract, or the number id\n"
+            "2. blocks                          (string) blocks\n"
 
             "\nResult:\n"
             "  \"contractid\" : n,              (number) the identifier\n"
@@ -3909,8 +3911,8 @@ UniValue tl_vwap_volatility(const JSONRPCRequest& request)
             "]\n"
             
             "\nExamples:\n"
-            + HelpExampleCli("tl_vwap_volatility", "\"Contract 1\"")
-            + HelpExampleRpc("tl_vwap_volatility", "\"Contract 1\""));
+            + HelpExampleCli("tl_vwap_volatility", "\"Contract 1\", \"10,50,100\"")
+            + HelpExampleRpc("tl_vwap_volatility", "\"Contract 1\", \"10,50,100\""));
 
     uint32_t contractId = ParseNameOrId(request.params[0]);
     
@@ -3930,7 +3932,14 @@ UniValue tl_vwap_volatility(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "No VWAP data data exists for contract: " + cd.name);
     }
 
-    auto vmmap = tl::GetVWAPSamples(c->second, {10, 50, 100, 500, 1000}); 
+    auto blocks = tl::split_string(request.params[1].get_str(), ',');
+
+    std::sort(blocks.begin(), blocks.end());
+    if (std::find_if(blocks.begin(), blocks.end(), [](int n){ return n < 10 || n > 1000 || n % 10 != 0; }) != blocks.end()) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Blocks [10..1000] must be multiple of 10");
+    }
+
+    auto vmmap = tl::GetVWAPSamples(c->second, blocks); 
 
     UniValue response(UniValue::VOBJ);
     response.pushKV("contract", cd.name);
@@ -3942,6 +3951,77 @@ UniValue tl_vwap_volatility(const JSONRPCRequest& request)
         vwap.push_back(u);
     }
     response.pushKV("volatility", vwap);
+    return response;
+}
+
+UniValue tl_antiwash_samples(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 4)
+        throw runtime_error(
+            "tl_antiwash_samples\n"
+
+            "\nReturns anti wash VWAP samples over period of blocks (e.g. 10,50,100,50,1000).\n"
+
+            "\nArguments:\n"
+            "1. name or id                      (string, required) the name  of the native future contract, or the number id\n"
+            "2. address                         (string) address to retrieve history for\n"
+            "3. propertyid                      (number) property id\n"
+            "4. blocks                          (string) blocks\n"
+
+            "\nResult:\n"
+            "  \"contractid\" : n,              (number) the identifier\n"
+            "  \"volatility\":                  historical VWAP price volatility\n"
+            "  [                                (array of JSON objects)\n"
+            "    {\n"
+            "        \"blocks\" : \"nn\",       (number) N last blocks\n"
+            "        \"change\" : \"nn\",       (number) percentage change of VWAP price over the last N blocks\n"
+            "    },\n"
+            "  ...\n"
+            "]\n"
+            
+            "\nExamples:\n"
+            + HelpExampleCli("tl_antiwash_samples", "\"Contract 1\", \"38CYEC81MhsAPYFUD6MNMZAuPeJRddaDqW\", \"1\", \"10,50,100\"")
+            + HelpExampleRpc("tl_antiwash_samples", "\"Contract 1\", \"38CYEC81MhsAPYFUD6MNMZAuPeJRddaDqW\", \"1\", \"10,50,100\""));
+
+    uint32_t contractId = ParseNameOrId(request.params[0]);
+    
+    CDInfo::Entry cd;
+    if (!_my_cds->getCD(contractId, cd)) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Contract identifier does not exist");
+    }
+
+    assert(cd.isNative());
+
+    if (!cd.isNative()) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Contract type must be native");
+    }
+
+    auto c = tokenvwap.find(contractId);
+    if (c == tokenvwap.end()) {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "No VWAP data data exists for contract: " + cd.name);
+    }
+
+    std::string addr = ParseAddress(request.params[1]);
+    uint32_t pid = ParsePropertyId(request.params[2]);
+    auto blocks = tl::split_string(request.params[3].get_str(), ',');
+
+    std::sort(blocks.begin(), blocks.end());
+    if (std::find_if(blocks.begin(), blocks.end(), [](int n){ return n < 10 || n > 1000 || n % 10 != 0; }) != blocks.end()) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Blocks [10..1000] must be multiple of 10");
+    }
+    
+    auto vv = tl::GetAntiWashSamples(c->second, channels_Map, addr, pid, blocks); 
+
+    UniValue response(UniValue::VOBJ);
+    response.pushKV("contract", cd.name);
+    UniValue uv(UniValue::VARR);
+    for (auto v : vv) {
+        UniValue u(UniValue::VOBJ);
+        u.pushKV("blocks", v.first);
+        u.pushKV("change", round((v.second.first / (float)v.second.second) * 100));
+        uv.push_back(u);
+    }
+    response.pushKV("volatility", uv);
     return response;
 }
 
@@ -4017,7 +4097,8 @@ static const CRPCCommand commands[] =
   { "trade layer (data retrieval)", "tl_isaddresswinner",                       &tl_isaddresswinner,                   {} },
   { "trade layer (data retrieval)" , "tl_getlast_winners",                      &tl_getlast_winners,                   {} },
 
-  { "trade layer (data retrieval)" , "tl_vwap_volatility",                      &tl_vwap_volatility,                   {} }
+  { "trade layer (data retrieval)" , "tl_vwap_volatility",                      &tl_vwap_volatility,                   {} },
+  { "trade layer (data retrieval)" , "tl_antiwash_samples",                     &tl_antiwash_samples,                  {} }
 };
 
 void RegisterTLDataRetrievalRPCCommands(CRPCTable &tableRPC)

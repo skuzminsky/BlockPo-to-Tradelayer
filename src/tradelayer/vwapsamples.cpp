@@ -7,7 +7,7 @@ namespace tl
 
 namespace mc = mastercore;
 
-bool FindChannelTrade(const Channels& data, const std::string& address, uint32_t pid, int nBlocks)
+static inline bool FindChannelTrade(const Channels& data, const std::string& address, uint32_t pid, int nBlocks)
 {
     // Build set of blocks for this trade 
     std::set<int> blocks;
@@ -68,40 +68,7 @@ bool FindChannelTrade(const Channels& data, const std::string& address, uint32_t
     return false;
 }
 
-std::map<int, P64> GetVWAPSamples(const std::map<int, V64>& data, std::initializer_list<int> nBlocks)
-{
-    std::map<int, P64> vwap;
-
-    for (size_t n : nBlocks) 
-    {
-        if (data.size() < n) {
-            break;
-        }
-
-        std::set<int64_t> set1;
-        std::set<int64_t> set2;
-
-        for (auto end=data.cend(), start=std::next(end,-n); start!=end; std::next(start)) 
-        {
-            auto& v64 = const_cast<V64&>(start->second);
-            if (v64.size()) 
-            {
-                std::sort(v64.begin(), v64.end(), [](const P64& a, const P64& b) { return a.first < b.first; });
-                set1.insert(v64.cbegin()->first);
-                set2.insert(std::prev(v64.cend())->first);
-            }
-        }
-
-        auto mn = set1.size() ? *set1.begin() : 0L;
-        auto mx = set2.size() ? *std::prev(set2.end()) : 0L;
-
-        vwap[n] = std::make_pair(mn, mx);
-    }
-    
-    return vwap;
-}
-
-static std::map<int, P64> GetVWAPSamplesFiltered(const std::map<int, V64>& data, const std::string& address, uint32_t pid, std::initializer_list<int> nBlocks, std::function<bool(int n)> pred)
+static std::map<int, P64> GetVWAPSamplesFiltered(const std::map<int, V64>& data, const std::string& address, uint32_t pid, const std::vector<int>& nBlocks, std::function<bool(int n)> pred)
 {
     std::map<int, P64> vwap;
 
@@ -150,7 +117,40 @@ static inline float GetBlockVolatility(const std::map<int, tl::P64>& data, int b
     return 0;
 }
 
-std::map<int, P64> GetAntiWashSamples(const std::map<int, V64>& data, const Channels& channels, const std::string& address, uint32_t pid, std::initializer_list<int> nBlocks)
+std::map<int, P64> GetVWAPSamples(const std::map<int, V64>& data, const std::vector<int>& nBlocks)
+{
+    std::map<int, P64> vwap;
+
+    for (size_t n : nBlocks) 
+    {
+        if (data.size() < n) {
+            break;
+        }
+
+        std::set<int64_t> set1;
+        std::set<int64_t> set2;
+
+        for (auto end=data.cend(), start=std::next(end,-n); start!=end; std::next(start)) 
+        {
+            auto& v64 = const_cast<V64&>(start->second);
+            if (v64.size()) 
+            {
+                std::sort(v64.begin(), v64.end(), [](const P64& a, const P64& b) { return a.first < b.first; });
+                set1.insert(v64.cbegin()->first);
+                set2.insert(std::prev(v64.cend())->first);
+            }
+        }
+
+        auto mn = set1.size() ? *set1.begin() : 0L;
+        auto mx = set2.size() ? *std::prev(set2.end()) : 0L;
+
+        vwap[n] = std::make_pair(mn, mx);
+    }
+    
+    return vwap;
+}
+
+std::map<int, P64> GetAntiWashSamples(const std::map<int, V64>& data, const Channels& channels, const std::string& address, uint32_t pid, const std::vector<int>& nBlocks)
 {
     return GetVWAPSamplesFiltered(data, address, pid, nBlocks, [&](int n){ return FindChannelTrade(channels, address, pid, n); });
 }
