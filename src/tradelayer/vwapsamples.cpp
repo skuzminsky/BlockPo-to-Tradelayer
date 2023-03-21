@@ -7,6 +7,17 @@ namespace tl
 
 namespace mc = mastercore;
 
+static inline float GetBlockVolatility(const std::map<int, P64>& data, int block)
+{
+    auto p = data.find(block);
+    if (p != data.end())
+    {
+        auto pv = p->second;
+        return pv.first / pv.second;       
+    }
+    return 0;
+}
+
 static inline bool FindChannelTrade(const Channels& data, const std::string& address, uint32_t pid, int nBlocks)
 {
     // Build set of blocks for this trade 
@@ -14,7 +25,7 @@ static inline bool FindChannelTrade(const Channels& data, const std::string& add
     std::vector<uint256> txArray;
     {
         LOCK(cs_tally);
-        std ::string ch;
+        std::string ch;
         if (!mc::t_tradelistdb->checkChannelRelation(address, ch))
         {
             // hasn't traded in a channel
@@ -68,7 +79,7 @@ static inline bool FindChannelTrade(const Channels& data, const std::string& add
     return false;
 }
 
-static std::map<int, P64> GetVWAPSamplesFiltered(const std::map<int, V64>& data, const std::string& address, uint32_t pid, const std::vector<int>& nBlocks, std::function<bool(int n)> pred)
+static inline std::map<int, P64> GetVWAPSamples(const std::map<int, V64>& data, const std::vector<int>& nBlocks, std::function<bool(int n)> pred)
 {
     std::map<int, P64> vwap;
 
@@ -83,8 +94,8 @@ static std::map<int, P64> GetVWAPSamplesFiltered(const std::map<int, V64>& data,
             continue;
         }
 
-        std::set<int64_t> set1;
-        std::set<int64_t> set2;
+        int64_t _min = std::numeric_limits<int64_t>::max();
+        int64_t _max = std::numeric_limits<int64_t>::min();
 
         for (auto end=data.cend(), start=std::next(end,-n); start!=end; std::next(start)) 
         {
@@ -92,67 +103,26 @@ static std::map<int, P64> GetVWAPSamplesFiltered(const std::map<int, V64>& data,
             if (v64.size()) 
             {
                 std::sort(v64.begin(), v64.end(), [](const P64& a, const P64& b) { return a.first < b.first; });
-                set1.insert(v64.cbegin()->first);
-                set2.insert(std::prev(v64.cend())->first);
+                
+                if (int64_t m = std::prev(v64.cend())->first > _max) _max = m;
+                if (int64_t m = v64.cbegin()->first < _min) _min = m;
             }
         }
 
-        auto mn = set1.size() ? *set1.begin() : 0L;
-        auto mx = set2.size() ? *std::prev(set2.end()) : 0L;
-
-        vwap[n] = std::make_pair(mn, mx);
+        vwap[n] = std::make_pair(_min, _max);
     }
     
     return vwap;
-}
-
-static inline float GetBlockVolatility(const std::map<int, tl::P64>& data, int block)
-{
-    auto p = data.find(block);
-    if (p != data.end())
-    {
-        auto pv = p->second;
-        return pv.first / pv.second;       
-    }
-    return 0;
 }
 
 std::map<int, P64> GetVWAPSamples(const std::map<int, V64>& data, const std::vector<int>& nBlocks)
 {
-    std::map<int, P64> vwap;
-
-    for (size_t n : nBlocks) 
-    {
-        if (data.size() < n) {
-            break;
-        }
-
-        std::set<int64_t> set1;
-        std::set<int64_t> set2;
-
-        for (auto end=data.cend(), start=std::next(end,-n); start!=end; std::next(start)) 
-        {
-            auto& v64 = const_cast<V64&>(start->second);
-            if (v64.size()) 
-            {
-                std::sort(v64.begin(), v64.end(), [](const P64& a, const P64& b) { return a.first < b.first; });
-                set1.insert(v64.cbegin()->first);
-                set2.insert(std::prev(v64.cend())->first);
-            }
-        }
-
-        auto mn = set1.size() ? *set1.begin() : 0L;
-        auto mx = set2.size() ? *std::prev(set2.end()) : 0L;
-
-        vwap[n] = std::make_pair(mn, mx);
-    }
-    
-    return vwap;
+    return GetVWAPSamples(data, nBlocks, [](int){ return false; });
 }
 
 std::map<int, P64> GetAntiWashSamples(const std::map<int, V64>& data, const Channels& channels, const std::string& address, uint32_t pid, const std::vector<int>& nBlocks)
 {
-    return GetVWAPSamplesFiltered(data, address, pid, nBlocks, [&](int n){ return FindChannelTrade(channels, address, pid, n); });
+    return GetVWAPSamples(data, nBlocks, [&](int n){ return FindChannelTrade(channels, address, pid, n); });
 }
 
 } // namespace tl
