@@ -35,6 +35,8 @@
 #include <tradelayer/wallettxs.h>
 #include <tradelayer/vwapsamples.h>
 #include <tradelayer/tupleutils.hpp>
+#include <tradelayer/insurancefund.h>
+#include <tradelayer/dbpayout.h>
 
 #include <amount.h>
 #include <arith_uint256.h>
@@ -3821,70 +3823,140 @@ UniValue tl_getchannel_historyforpair(const JSONRPCRequest& request)
     return response;
 }
 
-UniValue tl_getinsurancepayouts(const JSONRPCRequest& request)
-{
-    if (request.fHelp)
-        throw runtime_error(
-            "tl_getinsurancepayouts \n"
-
-            "\nReturns insurance fund payouts.\n"
-
-            "\nResult:\n"
-            "{\n"
-            "  \"amount\" : \"n.nnnnnnnn\",  (number) the payouts\n"
-            "}\n"
-
-            "\nExamples:\n"
-            + HelpExampleCli("tl_getinsurancepayouts", "1")
-            + HelpExampleRpc("tl_getinsurancepayouts", "2")
-        );
-
-    UniValue balanceObj(UniValue::VOBJ);
-    return balanceObj;
-}
-
 UniValue tl_getinsuranceordersnapshot(const JSONRPCRequest& request)
 {
-    if (request.fHelp)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "tl_getinsuranceordersnapshot \n"
+
+            "\nArguments:\n"
+            "1. propertyid               (number) property id\n"
 
             "\nReturns insurance fund order snapshot.\n"
 
             "\nResult:\n"
             "{\n"
-            "  \"amount\" : \"n.nnnnnnnn\",  (number) the payouts\n"
+            "  \"amount\" : \"n.nnnnnnnn\",  (number) fees\n"
             "}\n"
 
             "\nExamples:\n"
             + HelpExampleCli("tl_getinsuranceordersnapshot", "1")
-            + HelpExampleRpc("tl_getinsuranceordersnapshot", "2")
+            + HelpExampleRpc("tl_getinsuranceordersnapshot", "1")
         );
 
-    UniValue balanceObj(UniValue::VOBJ);
-    return balanceObj;
+    uint32_t pid = ParsePropertyId(request.params[0]);
+    
+    //RequireExistingProperty(pid);
+    
+    UniValue v(UniValue::VOBJ);
+    v.pushKV("amount", g_fund->GetFeesTotal(pid));
+    return v;
+}
+
+UniValue tl_getinsurancepayouts(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 1)
+        throw runtime_error(
+            "tl_getinsurancepayouts\n"
+
+            "\nReturns insurance fund payouts.\n"
+
+            "\nArguments:\n"
+            "1. name or id                      (string, required) the name  of the native future contract, or the number id\n"
+
+            "\nResult:\n"
+            "  \"payouts\":\n"
+            "  [                                (array of JSON objects)\n"
+            "    {\n"
+            "        \"contractid\" : \"nn\",   (number) contractid id\n"
+            "        \"blockid\"    : \"nn\",   (number) block id\n"
+            "        \"address\"    : \"address\", (string) recipient address\n"
+            "        \"amount\"     : \"n.nnnnnnnn\", (number) amount paid\n"
+            "        \"timeStamp\"  : \"n.nnnnnnnn\", (number) unix timestamp (seconds)\n"
+            "    },\n"
+            "  ...\n"
+            "]\n"
+
+            "\nExamples:\n"
+            + HelpExampleCli("tl_getinsurancepayouts", "3")
+            + HelpExampleRpc("tl_getinsurancepayouts", "4")
+        );
+
+    auto contractId = ParsePropertyId(request.params[0]);
+    
+    if (contractId > 0) {
+        CDInfo::Entry cd;
+        if (!_my_cds->getCD(contractId, cd)) {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Contract identifier does not exist");
+        }
+    }
+
+    UniValue vv(UniValue::VARR);
+    for (auto p : DBPayout().GetPayouts(contractId)) {
+        UniValue v(UniValue::VOBJ);
+        v.pushKV("contractId", p.nContractId);
+        v.pushKV("blockId", p.nBlockId);
+        v.pushKV("address", p.sAddr);
+        v.pushKV("amount", (uint64_t)p.nAmount);
+        v.pushKV("timeStamp", (uint64_t)p.nTimeStamp);
+        vv.push_back(v);
+    }
+
+    UniValue response(UniValue::VOBJ);
+    return response.pushKV("payouts", vv), response;
 }
 
 UniValue tl_getsocializations(const JSONRPCRequest& request)
 {
-    if (request.fHelp)
+    if (request.fHelp || request.params.size() != 1)
         throw runtime_error(
             "tl_getsocializations \n"
 
-            "\nReturns socialization payouts.\n"
+            "\nReturns socializations.\n"
+
+            "\nArguments:\n"
+            "1. name or id                      (string, required) the name  of the native future contract, or the number id\n"
 
             "\nResult:\n"
-            "{\n"
-            "  \"amount\" : \"n.nnnnnnnn\",  (number) the payouts\n"
-            "}\n"
+            "  \"socializations\":\n"
+            "  [                                (array of JSON objects)\n"
+            "    {\n"
+            "        \"contractid\" : \"nn\",   (number) contractid id\n"
+            "        \"blockid\"    : \"nn\",   (number) block id\n"
+            "        \"address\"    : \"address\", (string) recipient address\n"
+            "        \"amount\"     : \"n.nnnnnnnn\", (number) amount paid\n"
+            "        \"timeStamp\"  : \"n.nnnnnnnn\", (number) unix timestamp (seconds)\n"
+            "    },\n"
+            "  ...\n"
+            "]\n"
 
             "\nExamples:\n"
             + HelpExampleCli("tl_getsocializations", "1")
             + HelpExampleRpc("tl_getsocializations", "2")
         );
 
-    UniValue balanceObj(UniValue::VOBJ);
-    return balanceObj;
+    auto contractId = ParsePropertyId(request.params[0]);
+    
+    if (contractId > 0) {
+        CDInfo::Entry cd;
+        if (!_my_cds->getCD(contractId, cd)) {
+            throw JSONRPCError(RPC_INVALID_PARAMETER, "Contract identifier does not exist");
+        }
+    }
+
+    UniValue vv(UniValue::VARR);
+    for (auto p : DBPayout().GetSocializations(contractId)) {
+        UniValue v(UniValue::VOBJ);
+        v.pushKV("contractId", p.nContractId);
+        v.pushKV("blockId", p.nBlockId);
+        v.pushKV("address", p.sAddr);
+        v.pushKV("amount", (uint64_t)p.nAmount);
+        v.pushKV("timeStamp", (uint64_t)p.nTimeStamp);
+        vv.push_back(v);
+    }
+
+    UniValue response(UniValue::VOBJ);
+    return response.pushKV("socializations", vv), response;
 }
 
 UniValue tl_vwap_volatility(const JSONRPCRequest& request)
@@ -4092,13 +4164,16 @@ static const CRPCCommand commands[] =
   { "trade layer (data retrieval)",  "tl_list_attestation",                     &tl_list_attestation,                  {} },
   { "trade layer (data retrieval)",  "tl_getwalletbalance",                     &tl_getwalletbalance,                  {} },
   { "trade layer (data retrieval)",  "tl_listchannel_addresses",                &tl_listchannel_addresses,             {} },
-  {"trade layer (data retrieval)",   "tl_listnodereward_addresses",             &tl_listnodereward_addresses,          {} },
-  {"trade layer (data retrieval)",   "tl_getnextreward",                        &tl_getnextreward,                     {} },
-  { "trade layer (data retrieval)", "tl_isaddresswinner",                       &tl_isaddresswinner,                   {} },
+  { "trade layer (data retrieval)",  "tl_listnodereward_addresses",             &tl_listnodereward_addresses,          {} },
+  { "trade layer (data retrieval)",  "tl_getnextreward",                        &tl_getnextreward,                     {} },
+  { "trade layer (data retrieval)",  "tl_isaddresswinner",                      &tl_isaddresswinner,                   {} },
   { "trade layer (data retrieval)" , "tl_getlast_winners",                      &tl_getlast_winners,                   {} },
 
   { "trade layer (data retrieval)" , "tl_vwap_volatility",                      &tl_vwap_volatility,                   {} },
-  { "trade layer (data retrieval)" , "tl_antiwash_samples",                     &tl_antiwash_samples,                  {} }
+  { "trade layer (data retrieval)" , "tl_antiwash_samples",                     &tl_antiwash_samples,                  {} },
+  { "trade layer (data retrieval)" , "tl_getinsuranceordersnapshot",            &tl_getinsuranceordersnapshot,         {} },
+  { "trade layer (data retrieval)" , "tl_getinsurancepayouts",                  &tl_getinsurancepayouts,               {} },
+  { "trade layer (data retrieval)" , "tl_getsocializations",                    &tl_getsocializations,                 {} },
 };
 
 void RegisterTLDataRetrievalRPCCommands(CRPCTable &tableRPC)

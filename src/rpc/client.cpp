@@ -380,6 +380,10 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "tl_sendmany", 1, "json" },
     { "tl_sendmany", 2, "propertyid" },
 
+    { "tl_getinsuranceordersnapshot", 0, "propertyid"},
+    { "tl_getinsurancepayouts", 0, "propertyid"},
+    { "tl_getsocializations", 0, "propertyid"},
+
 };
 
 class CRPCConvertTable
