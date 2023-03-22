@@ -21,7 +21,8 @@ TRADELAYER_TEST_CPP = \
   tradelayer/test/persistence_tests.cpp \
   tradelayer/test/mdex_functions_tests.cpp \
   tradelayer/test/lock_tests.cpp \
-  tradelayer/test/tuple_tests.cpp
+  tradelayer/test/tuple_tests.cpp \
+  tradelayer/test/dbpayout_tests.cpp
 
 BITCOIN_TESTS += \
   $(TRADELAYER_TEST_CPP) \

@@ -40,7 +40,8 @@ TRADELAYER_H = \
   tradelayer/wallettxs.h \
   tradelayer/walletutils.h \
   tradelayer/insurancefund.h \
-  tradelayer/vwapsamples.h
+  tradelayer/vwapsamples.h \
+  tradelayer/dbpayout.h
 
 TRADELAYER_CPP = \
   tradelayer/activation.cpp \
@@ -79,7 +80,8 @@ TRADELAYER_CPP = \
   tradelayer/fetchwallettx.cpp \
   tradelayer/varint.cpp \
   tradelayer/insurancefund.cpp \
-  tradelayer/vwapsamples.cpp
+  tradelayer/vwapsamples.cpp \
+  tradelayer/dbpayout.cpp
 
 if ENABLE_WALLET
 TRADELAYER_CPP += tradelayer/rpctx.cpp
