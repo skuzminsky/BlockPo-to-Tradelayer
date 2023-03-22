@@ -1676,7 +1676,7 @@ bool CMPTransaction::interpret_Set_Oracle()
         PrintToLog("\t oracle high price: %d\n",oracle_high);
         PrintToLog("\t oracle low price: %d\n",oracle_low);
         PrintToLog("\t oracle close price: %d\n",oracle_close);
-        PrintToLog("\t propertyId: %d\n", propertyId);
+        PrintToLog("\t contractId: %d\n", contractId);
     }
 
     return true;
@@ -1985,7 +1985,7 @@ bool CMPTransaction::interpret_Instant_LTC_Trade()
 /** Tx 114 */
 bool CMPTransaction::interpret_Contract_Instant()
 {
-  PrintToLog("s%(): inside interpret function!!!!!\n",__func__);
+
   int i = 0;
 
   std::vector<uint8_t> vecVersionBytes = GetNextVarIntBytes(i);
@@ -2030,7 +2030,6 @@ bool CMPTransaction::interpret_Contract_Instant()
       ileverage = DecompressInteger(vecLeverage);
   } else return false;
 
-  PrintToLog("s%(): function returning !!!!!\n",__func__);
   if ((!rpcOnly && msc_debug_packets) || msc_debug_packets_readonly || true)
   {
       PrintToLog("\t version: %d\n", version);
@@ -2515,8 +2514,8 @@ int CMPTransaction::logicMath_SimpleSend()
     }
 
     // Move the tokens
-    assert(update_tally_map(sender, property, -nValue, BALANCE));
-    assert(update_tally_map(receiver, property, nValue, BALANCE));
+    update_tally_map(sender, property, -nValue, BALANCE);
+    update_tally_map(receiver, property, nValue, BALANCE);
 
 
     return 0;
@@ -2629,8 +2628,8 @@ int CMPTransaction::logicMath_SendMany()
     for (size_t i=0; i <recipients.size(); ++i) {
         auto v = values[i];
 				if (v > 0) {
-				    assert(update_tally_map(sender, property, -v, BALANCE));
-					  assert(update_tally_map(recipients[i], property, v, BALANCE));
+				    update_tally_map(sender, property, -v, BALANCE);
+					  update_tally_map(recipients[i], property, v, BALANCE);
 				}
 
     }
@@ -2672,14 +2671,14 @@ int CMPTransaction::logicMath_SendVestingTokens()
       return (PKT_ERROR_SEND -25);
   }
 
-  assert(update_tally_map(sender, TL_PROPERTY_VESTING, -nValue, BALANCE));
-  assert(update_tally_map(receiver, TL_PROPERTY_VESTING, nValue, BALANCE));
+  update_tally_map(sender, TL_PROPERTY_VESTING, -nValue, BALANCE);
+  update_tally_map(receiver, TL_PROPERTY_VESTING, nValue, BALANCE);
 
 	const int64_t unVested = getMPbalance(sender, ALL, UNVESTED);
 
 	if(0 < unVested) {
-	    assert(update_tally_map(sender, ALL, -nValue, UNVESTED));
-	    assert(update_tally_map(receiver, ALL, nValue, UNVESTED));
+	    update_tally_map(sender, ALL, -nValue, UNVESTED);
+	    update_tally_map(receiver, ALL, nValue, UNVESTED);
 	}
 
   vestingAddresses.insert(receiver);
@@ -2752,9 +2751,12 @@ int CMPTransaction::logicMath_SendAll()
 
             }
 
-            assert(update_tally_map(sender, propertyId, -moneyAvailable, BALANCE));
-            assert(update_tally_map(receiver, propertyId, moneyAvailable, BALANCE));
-            p_txlistdb->recordSendAllSubRecord(txid, numberOfPropertiesSent, propertyId, moneyAvailable);
+            if (moneyAvailable > 0) {
+                update_tally_map(sender, propertyId, -moneyAvailable, BALANCE);
+                update_tally_map(receiver, propertyId, moneyAvailable, BALANCE);
+                p_txlistdb->recordSendAllSubRecord(txid, numberOfPropertiesSent, propertyId, moneyAvailable);
+
+            }
         }
     }
 
@@ -2829,8 +2831,8 @@ int CMPTransaction::logicMath_CreatePropertyFixed()
     for_each(kyc_Ids.begin(), kyc_Ids.end(), [&newSP] (const int64_t& aux) { if (aux != 0) newSP.kyc.push_back(aux);});
 
     const uint32_t propertyId = _my_sps->putSP(newSP);
-    assert(propertyId > 0);
-    assert(update_tally_map(sender, propertyId, nValue, BALANCE));
+
+    if (nValue > 0) update_tally_map(sender, propertyId, nValue, BALANCE);
 
     NotifyTotalTokensChanged(propertyId);
 
@@ -2891,8 +2893,7 @@ int CMPTransaction::logicMath_CreatePropertyManaged()
 
     for_each(kyc_Ids.begin(), kyc_Ids.end(), [&newSP] (const int64_t& aux) { if (aux != 0) newSP.kyc.push_back(aux);});
 
-    uint32_t propertyId = _my_sps->putSP(newSP);
-    assert(propertyId > 0);
+    const uint32_t& propertyId = _my_sps->putSP(newSP);
 
     PrintToLog("CREATED MANUAL PROPERTY id: %d admin: %s\n", propertyId, sender);
 
@@ -2968,7 +2969,7 @@ int CMPTransaction::logicMath_GrantTokens()
   }
 
   CMPSPInfo::Entry sp;
-  assert(_my_sps->getSP(property, sp));
+  _my_sps->getSP(property, sp);
 
   if (!sp.manual) {
     PrintToLog("%s(): rejected: property %d is not managed\n", __func__, property);
@@ -3001,7 +3002,7 @@ int CMPTransaction::logicMath_GrantTokens()
   sp.num_tokens += nValue; // updating created tokens
 
   // Persist the number of granted tokens
-  assert(_my_sps->updateSP(property, sp));
+  _my_sps->updateSP(property, sp);
 
   // Special case: if can't find the receiver -- assume grant to self!
   if (receiver.empty()) {
@@ -3009,9 +3010,11 @@ int CMPTransaction::logicMath_GrantTokens()
   }
 
   // Move the tokens
-  assert(update_tally_map(receiver, property, nValue, BALANCE));
+  if (nValue > 0) {
+      update_tally_map(receiver, property, nValue, BALANCE);
+      NotifyTotalTokensChanged(property);
+  }
 
-  NotifyTotalTokensChanged(property);
 
   return 0;
 }
@@ -3062,7 +3065,7 @@ int CMPTransaction::logicMath_RevokeTokens()
     }
 
     CMPSPInfo::Entry sp;
-    assert(_my_sps->getSP(property, sp));
+    _my_sps->getSP(property, sp);
 
     if (!sp.manual) {
         PrintToLog("%s(): rejected: property %d is not managed\n", __func__, property);
@@ -3088,10 +3091,13 @@ int CMPTransaction::logicMath_RevokeTokens()
     sp.historicalData.insert(std::make_pair(txid, dataPt));
     sp.update_block = blockHash;
 
-    assert(update_tally_map(sender, property, -nValue, BALANCE));
-    assert(_my_sps->updateSP(property, sp));
+    if (nValue > 0) {
+        update_tally_map(sender, property, -nValue, BALANCE);
+        _my_sps->updateSP(property, sp);
 
-    NotifyTotalTokensChanged(property);
+        NotifyTotalTokensChanged(property);
+    }
+
 
     return 0;
 }
@@ -3108,6 +3114,7 @@ int CMPTransaction::logicMath_ChangeIssuer()
             PrintToLog("%s(): ERROR: block %d not in the active chain\n", __func__, block);
             return (PKT_ERROR_TOKENS -20);
         }
+
         blockHash = pindex->GetBlockHash();
     }
 
@@ -3127,7 +3134,7 @@ int CMPTransaction::logicMath_ChangeIssuer()
     }
 
     CMPSPInfo::Entry sp;
-    assert(_my_sps->getSP(property, sp));
+    _my_sps->getSP(property, sp);
 
     if (sender != sp.issuer) {
         PrintToLog("%s(): rejected: sender %s is not issuer of property %d [issuer=%s]\n", __func__, sender, property, sp.issuer);
@@ -3144,7 +3151,7 @@ int CMPTransaction::logicMath_ChangeIssuer()
     sp.issuer = receiver;
     sp.update_block = blockHash;
 
-    assert(_my_sps->updateSP(property, sp));
+    _my_sps->updateSP(property, sp);
 
     return 0;
 }
@@ -3411,7 +3418,6 @@ int CMPTransaction::logicMath_CreateContractDex()
 
   const uint32_t contractId = _my_cds->putCD(newCD);
   PrintToLog("%s(): contractId: %d\n",__func__, contractId);
-  assert(contractId > 0);
 
   return 0;
 }
@@ -3450,7 +3456,7 @@ int CMPTransaction::logicMath_ContractDexTrade()
   if (position == 0 && rleverage == 0) {
       //setting leverage
       PrintToLog("%s(): setting leverage: %d \n", __func__, leverage);
-      assert(update_register_map(sender, contractId, leverage, LEVERAGE));
+      update_register_map(sender, contractId, leverage, LEVERAGE);
 
   } else if(rleverage != leverage &&  0 < position) {
       PrintToLog("%s(): ERROR: Bad leverage \n", __func__);
@@ -3473,8 +3479,8 @@ int CMPTransaction::logicMath_ContractDexTrade()
       if (amountToReserve > 0)
 	    {
            //NOTE: this amount is transfered to position margin when exist matches in x_TradeBidirectional function
-	        assert(update_tally_map(sender, colateralh, -amountToReserve, BALANCE));
-	        assert(update_tally_map(sender, colateralh,  amountToReserve, CONTRACTDEX_RESERVE));
+	        update_tally_map(sender, colateralh, -amountToReserve, BALANCE);
+	        update_tally_map(sender, colateralh,  amountToReserve, CONTRACTDEX_RESERVE);
 	    }
 
   }
@@ -3786,12 +3792,11 @@ int CMPTransaction::logicMath_CreatePeggedCurrency()
         _my_sps->updateSP(npropertyId, newSP);
     }
 
-    assert(npropertyId > 0);
     CMPSPInfo::Entry SP;
     _my_sps->getSP(npropertyId, SP);
 
     // synthetic tokens update
-    assert(update_tally_map(sender, npropertyId, amount, BALANCE));
+    update_tally_map(sender, npropertyId, amount, BALANCE);
     // t_tradelistdb->NotifyPeggedCurrency(txid, sender, npropertyId, amount,SP.series); //TODO: Watch this function!
 
     // Adding the element to map of pegged currency owners
@@ -3806,10 +3811,10 @@ int CMPTransaction::logicMath_CreatePeggedCurrency()
 
 
     //putting into reserve contracts and collateral currency
-    assert(update_register_map(sender, contractId, contracts, CONTRACT_POSITION));
-    assert(update_register_map(sender, contractId, contracts, CONTRACT_RESERVE));
-    assert(update_tally_map(sender, propertyId, -amount, BALANCE));
-    assert(update_tally_map(sender, propertyId, amount, CONTRACTDEX_RESERVE));
+    update_register_map(sender, contractId, contracts, CONTRACT_POSITION);
+    update_register_map(sender, contractId, contracts, CONTRACT_RESERVE);
+    update_tally_map(sender, propertyId, -amount, BALANCE);
+    update_tally_map(sender, propertyId, amount, CONTRACTDEX_RESERVE);
 
     return 0;
 }
@@ -3860,8 +3865,8 @@ int CMPTransaction::logicMath_SendPeggedCurrency()
 
     // Move the tokensss
 
-    assert(update_tally_map(sender, propertyId, -amount, BALANCE));
-    assert(update_tally_map(receiver, propertyId, amount, BALANCE));
+    update_tally_map(sender, propertyId, -amount, BALANCE);
+    update_tally_map(receiver, propertyId, amount, BALANCE);
 
     // Adding the element to map of pegged currency owners
     peggedIssuers.insert (std::pair<std::string,uint32_t>(receiver,propertyId));
@@ -3934,13 +3939,13 @@ int CMPTransaction::logicMath_RedemptionPegged()
     if (contractsNeeded != 0 && amount > 0)
     {
        // Delete the tokens
-       assert(update_tally_map(sender, propertyId, -amount, BALANCE));
+       update_tally_map(sender, propertyId, -amount, BALANCE);
        // delete contracts in reserve
-       assert(update_register_map(sender, contractId, -contractsNeeded, CONTRACT_RESERVE));
+       update_register_map(sender, contractId, -contractsNeeded, CONTRACT_RESERVE);
        // getting back short position
-       assert(update_register_map(sender, contractId, -contractsNeeded, CONTRACT_POSITION));
+       update_register_map(sender, contractId, -contractsNeeded, CONTRACT_POSITION);
        // getting back the collateral
-       assert(update_tally_map(sender, collateralId, amount, BALANCE));
+       update_tally_map(sender, collateralId, amount, BALANCE);
 
 
     } else {
@@ -4222,8 +4227,7 @@ int CMPTransaction::logicMath_CreateOracleContract()
 
     for_each(kyc_Ids.begin(), kyc_Ids.end(), [&newSP] (const int64_t& aux) { if (aux != 0) newSP.kyc.push_back(aux);});
 
-    const uint32_t contractId = _my_cds->putCD(newSP);
-    assert(contractId > 0);
+    _my_cds->putCD(newSP);
 
     return 0;
 }
@@ -4260,7 +4264,7 @@ int CMPTransaction::logicMath_Change_OracleAdm()
     }
 
     CDInfo::Entry cd;
-    assert(_my_cds->getCD(contractId, cd));
+    _my_cds->getCD(contractId, cd);
 
     if (sender != cd.issuer) {
         PrintToLog("%s(): rejected: sender %s is not issuer of contract %d [issuer=%s]\n", __func__, sender, property, cd.issuer);
@@ -4277,7 +4281,7 @@ int CMPTransaction::logicMath_Change_OracleAdm()
     cd.issuer = receiver;
     cd.update_block = blockHash;
 
-    assert(_my_cds->updateCD(contractId, cd));
+    _my_cds->updateCD(contractId, cd);
 
     return 0;
 }
@@ -4286,22 +4290,22 @@ int CMPTransaction::logicMath_Change_OracleAdm()
 int CMPTransaction::logicMath_Set_Oracle()
 {
     if (!IsTransactionTypeAllowed(block, type, version)) {
-        PrintToLog("%s(): rejected: type %d or version %d not permitted for property %d at block %d\n",
+        PrintToLog("%s(): rejected: type %d or version %d not permitted for contractId %d at block %d\n",
                 __func__,
                 type,
                 version,
-                property,
+                contractId,
                 block);
         return (PKT_ERROR_SP -22);
     }
 
-    if (!IsPropertyIdValid(contractId)) {
-        PrintToLog("%s(): rejected: oracle %d does not exist\n", __func__, property);
+    if (!IsContractIdValid(contractId)) {
+        PrintToLog("%s(): rejected: oracle %d does not exist\n", __func__, contractId);
         return (PKT_ERROR_ORACLE -11);
     }
 
     CDInfo::Entry sp;
-    assert(_my_cds->getCD(contractId, sp));
+    _my_cds->getCD(contractId, sp);
 
     if (sender != sp.issuer) {
         PrintToLog("%s(): rejected: sender %s is not the oracle address of the future contract %d [oracle address=%s]\n", __func__, sender, contractId, sp.issuer);
@@ -4331,7 +4335,7 @@ int CMPTransaction::logicMath_Set_Oracle()
    }
 
 
-    assert(_my_cds->updateCD(contractId, sp));
+    _my_cds->updateCD(contractId, sp);
 
     // if (msc_debug_set_oracle) PrintToLog("oracle data for contract: block: %d,high:%d, low:%d, close:%d\n",block, oracle_high, oracle_low, oracle_close);
 
@@ -4370,7 +4374,7 @@ int CMPTransaction::logicMath_OracleBackup()
     }
 
     CDInfo::Entry sp;
-    assert(_my_cds->getCD(contractId, sp));
+    _my_cds->getCD(contractId, sp);
 
     if (sender != sp.backup_address) {
         PrintToLog("%s(): rejected: sender %s is not the backup address of the Oracle Future Contract\n", __func__,sender);
@@ -4382,7 +4386,7 @@ int CMPTransaction::logicMath_OracleBackup()
     sp.issuer = sender;
     sp.update_block = blockHash;
 
-    assert(_my_cds->updateCD(contractId, sp));
+    _my_cds->updateCD(contractId, sp);
 
     return 0;
 }
@@ -4405,7 +4409,7 @@ int CMPTransaction::logicMath_CloseOracle()
     }
 
     CDInfo::Entry sp;
-    assert(_my_cds->getCD(contractId, sp));
+    _my_cds->getCD(contractId, sp);
 
     if (sender != sp.backup_address) {
         PrintToLog("%s(): rejected: sender (%s) is not the backup address of the Oracle Future Contract\n", __func__,sender);
@@ -4416,7 +4420,7 @@ int CMPTransaction::logicMath_CloseOracle()
 
     sp.blocks_until_expiration = 0;
 
-    assert(_my_cds->updateCD(contractId, sp));
+    _my_cds->updateCD(contractId, sp);
 
     PrintToLog("%s(): Oracle Contract (id:%d) Closed\n", __func__, contractId);
 
@@ -4459,7 +4463,7 @@ int CMPTransaction::logicMath_CommitChannel()
 
     if(msc_debug_commit_channel) PrintToLog("%s():sender: %s, channelAddress: %s, amount_commited: %d, propertyId: %d\n",__func__, sender, receiver, amount_commited, propertyId);
 
-    assert(update_tally_map(sender, propertyId, -amount_commited, BALANCE));
+    update_tally_map(sender, propertyId, -amount_commited, BALANCE);
 
     t_tradelistdb->recordNewCommit(txid, receiver, sender, propertyId, amount_commited, block, tx_idx);
 
@@ -4491,7 +4495,11 @@ int CMPTransaction::logicMath_Withdrawal_FromChannel()
 
     // checking the amount remaining in the channel
     auto it = channels_Map.find(receiver);
-    assert(it != channels_Map.end());
+    if (it == channels_Map.end()){
+        PrintToLog("%s(): rejected: channel not found\n", __func__);
+        return (PKT_ERROR_CHANNELS -19);
+    }
+
     Channel &chn = it->second;
 
     //checking amount in channel for sender
@@ -4656,11 +4664,11 @@ int CMPTransaction::logicMath_Instant_Trade()
       PrintToLog("%s(): sender: %s, receiver: %s, special: %s, multisig: %s, first: %s, second: %s,  property: %d, amount_forsale: %d, desired_property: %d, desired_value: %d, block: %d\n",__func__, sender, receiver, special, chn.getMultisig(), chn.getFirst(), chn.getSecond(), property, amount_forsale, desired_property, desired_value, block);
 
       // updating channel balance for each address
-      assert(chn.updateChannelBal(special, property, -amount_forsale));
-      assert(chn.updateChannelBal(receiver, desired_property, -desired_value));
+      chn.updateChannelBal(special, property, -amount_forsale);
+      chn.updateChannelBal(receiver, desired_property, -desired_value);
 
-      assert(update_tally_map(special, desired_property, desired_value, BALANCE));
-      assert(update_tally_map(receiver, property, amount_forsale, BALANCE));
+      update_tally_map(special, desired_property, desired_value, BALANCE);
+      update_tally_map(receiver, property, amount_forsale, BALANCE);
 
   }
 
@@ -4690,7 +4698,7 @@ int CMPTransaction::logicMath_Update_PNL()
 
   //logic for PNLS
   // assert(update_tally_map(sender, propertyId, -pnl_amount, CHANNEL_RESERVE));
-  assert(update_tally_map(receiver, propertyId, pnl_amount, BALANCE));
+  update_tally_map(receiver, propertyId, pnl_amount, BALANCE);
 
 
   return 0;
@@ -4772,23 +4780,24 @@ int CMPTransaction::logicMath_Instant_LTC_Trade()
       return (PKT_ERROR_CHANNELS -13);
   }
 
+/*
   std::string chnAddr;
   if(!t_tradelistdb->checkChannelRelation(receiver, chnAddr)){
         PrintToLog("%s(): seller addresses (%s) are not related with any channel\n", __func__, receiver);
         return (PKT_ERROR_CHANNELS -15);
   }
-
+*/
   if(block_forexpiry < block) {
       PrintToLog("%s(): rejected: tx expired (actual block: %d, expiry: %d\n", __func__, block , block_forexpiry);
       return (PKT_ERROR_CHANNELS -16);
   }
-
+/*
   auto it = channels_Map.find(chnAddr);
   if (it == channels_Map.end()){
       PrintToLog("%s(): rejected: channel not found\n", __func__);
       return (PKT_ERROR_CHANNELS -19);
   }
-
+*/
   return rc;
 }
 
@@ -4826,13 +4835,13 @@ int CMPTransaction::logicMath_Contract_Instant()
         return (PKT_ERROR_CHANNELS -13);
     }
 
-    if (block > sp.init_block + static_cast<int>(sp.blocks_until_expiration) || block < sp.init_block)
+    /*if (block > sp.init_block + static_cast<int>(sp.blocks_until_expiration) || block < sp.init_block)
     {
          const int& initblock = sp.init_block;
          const int deadline = initblock + static_cast<int>(sp.blocks_until_expiration);
          PrintToLog("\nTrade out of deadline!!: actual block: %d, deadline: %d\n", initblock, deadline);
          return (PKT_ERROR_CHANNELS -16);
-    }
+    }*/
 
     int kyc_id;
 
@@ -4869,9 +4878,9 @@ int CMPTransaction::logicMath_Contract_Instant()
             return 0;
         }
 
-        assert(update_tally_map(chn.getFirst(), sp.collateral_currency, amountToReserve, CONTRACTDEX_RESERVE));
+        update_tally_map(chn.getFirst(), sp.collateral_currency, amountToReserve, CONTRACTDEX_RESERVE);
         if (msc_debug_contract_instant_trade) PrintToLog("%s(): first address reserve done\n", __func__);
-        assert(update_tally_map(chn.getSecond(), sp.collateral_currency, amountToReserve, CONTRACTDEX_RESERVE));
+        update_tally_map(chn.getSecond(), sp.collateral_currency, amountToReserve, CONTRACTDEX_RESERVE);
         if (msc_debug_contract_instant_trade) PrintToLog("%s(): second address reserve done\n", __func__);
 
         mastercore::Instant_x_Trade(txid, itrading_action, chn.getMultisig(), chn.getFirst(), chn.getSecond(), contractId, instant_amount, price, sp.collateral_currency, sp.prop_type, block, tx_idx);
@@ -4930,7 +4939,7 @@ int CMPTransaction::logicMath_Update_Id_Registration()
 
   // ---------------------------------------
 
-  assert(t_tradelistdb->updateIdRegister(txid,sender, receiver,block, tx_idx));
+  t_tradelistdb->updateIdRegister(txid,sender, receiver,block, tx_idx);
 
   return 0;
 }
@@ -4997,7 +5006,7 @@ int CMPTransaction::logicMath_Revoke_Attestation()
         return (PKT_ERROR_SP -22);
     }
 
-    assert(t_tradelistdb->deleteAttestationReg(sender, receiver));
+    t_tradelistdb->deleteAttestationReg(sender, receiver);
 
     return 0;
 }
@@ -5148,7 +5157,7 @@ int CMPTransaction::logicMath_SendDonation()
     // ------------------------------------------
 
     // Move the tokens
-    assert(update_tally_map(sender, property, -nValue, BALANCE));
+    update_tally_map(sender, property, -nValue, BALANCE);
     //update insurance here!
     g_fund->AccrueFees(property, nValue);
 
@@ -5158,7 +5167,7 @@ int CMPTransaction::logicMath_SendDonation()
 FutureContractObject getFutureContractObject(std::string identifier)
 {
   LOCK(cs_register);
-  
+
   const uint32_t nextCDID = _my_cds->peekNextContractID();
   for (uint32_t contractId = 1; contractId < nextCDID; contractId++)
   {
